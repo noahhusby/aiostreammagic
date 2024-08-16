@@ -1,0 +1,28 @@
+[tool.poetry]
+name = "aiostreammagic"
+version = "1.0.0"
+description = "An async python package for interfacing with Cambridge Audio / Stream Magic compatible streamers."
+authors = ["Noah Husby <32528627+noahhusby@users.noreply.github.com>"]
+maintainers = ["Noah Husby <32528627+noahhusby@users.noreply.github.com>"]
+license = "MIT"
+readme = "README.md"
+homepage = "https://github.com/noahhusby/aiostreammagic"
+repository = "https://github.com/noahhusby/aiostreammagic"
+documentation = "https://github.com/noahhusby/aiostreammagic"
+
+[tool.poetry.dependencies]
+python = "^3.11"
+aiohttp = ">=3.0.0"
+yarl = ">=1.6.0"
+mashumaro = "^3.11"
+orjson = ">=3.9.0"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "8.3.2"
+pytest-asyncio = "0.23.8"
+pytest-cov = "5.0.0"
+ruff = "0.5.7"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
