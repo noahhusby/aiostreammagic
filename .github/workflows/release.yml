@@ -12,7 +12,9 @@ jobs:
   release:
     name: Build and publish Python package to PyPI and TestPyPI
     runs-on: ubuntu-latest
-
+    permissions:
+      contents: write
+      id-token: write
     steps:
     - uses: actions/checkout@master
     - name: 🏗 Set up Poetry
