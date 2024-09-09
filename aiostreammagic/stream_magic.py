@@ -1,161 +1,326 @@
 """Asynchronous Python client for StreamMagic API."""
 import asyncio
+import json
 import socket
+from asyncio import AbstractEventLoop, Future, Task
+from collections import defaultdict
 from dataclasses import dataclass
 from typing import Any
 
+import websockets
 from aiohttp import ClientSession, ClientError, ClientResponseError
 from aiohttp.hdrs import METH_GET
+from websockets import WebSocketClientProtocol
 from yarl import URL
 
 from aiostreammagic.exceptions import StreamMagicError, StreamMagicConnectionError
 from aiostreammagic.models import Info, Source, State, PlayState
 
+from websockets.client import connect as ws_connect
+
+from . import endpoints as ep
+from .const import _LOGGER
+
 VERSION = '1.0.0'
 
 
-@dataclass
 class StreamMagicClient:
     """Client for handling connections with StreamMagic enabled devices."""
 
-    host: str
-    session: ClientSession | None = None
-    request_timeout: int = 10
-    _close_session: bool = False
+    def __init__(self, host):
+        self.host = host
+        self.connection: WebSocketClientProtocol | None = None
+        self.futures: dict[str, list[asyncio.Future]] = {}
+        self._subscriptions: dict[str, Any] = {}
+        self._loop: AbstractEventLoop = asyncio.get_running_loop()
+        self.connect_result: Future | None = None
+        self.connect_task: Task | None = None
+        self.state_update_callbacks: list[Any] = []
+        self.info: Info | None = None
+        self.sources: list[Source] | None = None
+        self.state: State | None = None
+        self.play_state: PlayState | None = None
 
-    async def _request(self, url: URL, *, method: str = METH_GET, data: dict[str, Any] | None = None) -> dict[str, Any]:
-        """Send a request to a StreamMagic device."""
-        headers = {
-            "User-Agent": f"aiostreammagic/{VERSION}",
-            "Accept": "application/json",
+    async def register_state_update_callbacks(self, callback: Any):
+        """Register state update callback."""
+        self.state_update_callbacks.append(callback)
+        await callback(self)
+
+    def unregister_state_update_callbacks(self, callback: Any):
+        """Unregister state update callback."""
+        if callback in self.state_update_callbacks:
+            self.state_update_callbacks.remove(callback)
+
+    def clear_state_update_callbacks(self):
+        """Clear state update callbacks."""
+        self.state_update_callbacks.clear()
+
+    async def do_state_update_callbacks(self):
+        """Call state update callbacks."""
+        callbacks = set()
+        for callback in self.state_update_callbacks:
+            callbacks.add(callback(self))
+
+        if callbacks:
+            await asyncio.gather(*callbacks)
+
+    async def connect(self):
+        """Connect to StreamMagic enabled devices."""
+        if not self.is_connected():
+            self.connect_result = self._loop.create_future()
+            self.connect_task = asyncio.create_task(
+                self.connect_handler(self.connect_result)
+            )
+        return await self.connect_result
+
+    def is_connected(self) -> bool:
+        """Return True if device is connected."""
+        return self.connect_task is not None and self.connect_task.done()
+
+    async def _ws_connect(self, uri):
+        """Establish a connection with a WebSocket."""
+        return await ws_connect(
+            uri,
+            extra_headers={"Origin": f"ws://{self.host}", "Host": f"{self.host}:80"}
+        )
+
+    async def connect_handler(self, res):
+        """Handle connection for StreamMagic."""
+        self.futures = {}
+        uri = f"ws://{self.host}/smoip"
+        ws = await self._ws_connect(uri)
+        self.connection = ws
+        x = asyncio.create_task(
+            self.consumer_handler(ws, self._subscriptions, self.futures)
+        )
+        self.info, self.sources = await asyncio.gather(self.get_info(), self.get_sources())
+        subscribe_state_updates = {
+            self.subscribe(self._async_handle_info, ep.INFO),
+            self.subscribe(self._async_handle_sources, ep.SOURCES),
+            self.subscribe(self._async_handle_zone_state, ep.ZONE_STATE),
+            self.subscribe(self._async_handle_play_state, ep.PLAY_STATE),
+            self.subscribe(self._async_handle_position, ep.POSITION),
+        }
+        subscribe_tasks = set()
+        for state_update in subscribe_state_updates:
+            subscribe_tasks.add(asyncio.create_task(state_update))
+        await asyncio.wait(subscribe_tasks)
+
+        res.set_result(True)
+        await asyncio.wait([x], return_when=asyncio.FIRST_COMPLETED)
+
+    @staticmethod
+    async def subscription_handler(queue, callback):
+        """Handle subscriptions."""
+        try:
+            while True:
+                msg = await queue.get()
+                await callback(msg)
+        except asyncio.CancelledError:
+            pass
+
+    async def consumer_handler(self, ws: WebSocketClientProtocol, subscriptions: dict[str, list[Any]],
+                               futures: dict[str, list[asyncio.Future]]):
+        """Callback consumer handler."""
+        subscription_queues = {}
+        subscription_tasks = {}
+        try:
+            async for raw_msg in ws:
+                print(futures or subscriptions)
+                if futures or subscriptions:
+                    _LOGGER.debug("recv(%s): %s", self.host, raw_msg)
+                    msg = json.loads(raw_msg)
+                    path = msg["path"]
+                    path_futures = self.futures.get(path)
+                    subscription = self._subscriptions.get(path)
+                    if path_futures and msg["type"] == "response":
+                        for future in path_futures:
+                            if not future.done():
+                                future.set_result(msg)
+                    if subscription:
+                        if path not in subscription_tasks:
+                            queue = asyncio.Queue()
+                            subscription_queues[path] = queue
+                            subscription_tasks[path] = asyncio.create_task(
+                                self.subscription_handler(queue, subscription)
+                            )
+                        subscription_queues[path].put_nowait(msg)
+
+        except (
+                asyncio.CancelledError,
+                websockets.exceptions.ConnectionClosedError,
+                websockets.exceptions.ConnectionClosedOK,
+        ):
+            pass
+
+    async def _send(self, path, params=None):
+        """Send a command to the device."""
+        message = {
+            "path": path,
+            "params": params or {},
         }
 
-        if self.session is None:
-            self.session = ClientSession()
-            self._close_session = True
+        if not self.connection:
+            raise StreamMagicError("Not connected to device.")
 
+        _LOGGER.debug("Sending command: %s", message)
+        await self.connection.send(json.dumps(message))
+
+    async def request(self, path: str, params=None) -> Any:
+        res = self._loop.create_future()
+        path_futures = self.futures.get(path, [])
+        path_futures.append(res)
+        self.futures[path] = path_futures
         try:
-            async with asyncio.timeout(self.request_timeout):
-                response = await self.session.request(
-                    method,
-                    url,
-                    headers=headers,
-                    json=data,
-                )
-        except asyncio.TimeoutError as exception:
-            msg = "Timeout occurred while connecting to the device"
-            raise StreamMagicConnectionError(msg) from exception
-        except (
-                ClientError,
-                ClientResponseError,
-                socket.gaierror,
-        ) as exception:
-            msg = "Error occurred while communicating with the device"
-            raise StreamMagicConnectionError(msg) from exception
+            await self._send(path, params)
+        except (asyncio.CancelledError, StreamMagicError):
+            path_futures.remove(res)
+            raise
+        try:
+            response = await res
+        except asyncio.CancelledError:
+            if res in path_futures:
+                path_futures.remove(res)
+            raise
+        path_futures.remove(res)
+        print(response)
+        message = response["message"]
+        result = response["result"]
+        if result != 200:
+            raise StreamMagicError("Error!")
 
-        if response.status != 200:
-            content_type = response.headers.get("Content-Type", "")
-            text = await response.text()
-            msg = "Unexpected response from "
-            raise StreamMagicConnectionError(
-                msg,
-                {"Content-Type": content_type, "response": text},
-            )
+        return response["params"]["data"]
 
-        return await response.json()
-
-    async def _request_device(self, uri: str, *, query: str = ""):
-        url = URL.build(scheme="http", host=self.host, path=f"/smoip/{uri}", query=query)
-        print(url)
-        return await self._request(url, method="GET")
+    async def subscribe(self, callback: Any, path: str) -> Any:
+        self._subscriptions[path] = callback
+        try:
+            await self._send(path, {"update": 100, "zone": "ZONE1"})
+        except (asyncio.CancelledError, StreamMagicError):
+            del self._subscriptions[path]
+            raise
 
     async def get_info(self) -> Info:
         """Get device information from device."""
-        data = await self._request_device('system/info')
-        return Info.from_dict(data["data"])
+        data = await self.request(ep.INFO)
+        return Info.from_dict(data)
 
     async def get_sources(self) -> list[Source]:
         """Get source information from device."""
-        data = await self._request_device('system/sources')
-        sources = [Source.from_dict(x) for x in data["data"]["sources"]]
+        data = await self.request(ep.SOURCES)
+        sources = [Source.from_dict(x) for x in data["sources"]]
         return sources
 
     async def get_state(self) -> State:
         """Get state information from device."""
-        data = await self._request_device('zone/state')
-        return State.from_dict(data["data"])
+        data = await self.request(ep.ZONE_STATE)
+        return State.from_dict(data)
 
     async def get_play_state(self) -> PlayState:
         """Get play state information from device."""
-        data = await self._request_device('zone/play_state')
-        return PlayState.from_dict(data["data"])
+        data = await self.request(ep.PLAY_STATE)
+        return PlayState.from_dict(data)
 
-    async def power_on(self) -> None:
-        """Set the power of the device to on."""
-        await self._request_device('system/power', query='power=ON')
+    async def _async_handle_info(self, payload) -> None:
+        """Handle async info update."""
+        params = payload["params"]
+        if "data" in params:
+            self.info = Info.from_dict(params["data"])
+        await self.do_state_update_callbacks()
 
-    async def power_off(self) -> None:
-        """Set the power of the device to network."""
-        await self._request_device('system/power', query='power=NETWORK')
+    async def _async_handle_sources(self, payload) -> None:
+        """Handle async sources update."""
+        params = payload["params"]
+        if "data" in params:
+            self.sources = [Source.from_dict(x) for x in params["data"]["sources"]]
+        await self.do_state_update_callbacks()
 
-    async def volume_up(self) -> None:
-        """Increase the volume of the device by 1."""
-        await self._request_device('zone/state', query='zone=ZONE1&volume_step_change=1')
+    async def _async_handle_zone_state(self, payload) -> None:
+        """Handle async zone state update."""
+        params = payload["params"]
+        if "data" in params:
+            self.state = State.from_dict(params["data"])
+        await self.do_state_update_callbacks()
 
-    async def volume_down(self) -> None:
-        """Increase the volume of the device by -1."""
-        await self._request_device('zone/state', query='zone=ZONE1&volume_step_change=-1')
+    async def _async_handle_play_state(self, payload) -> None:
+        """Handle async zone state update."""
+        params = payload["params"]
+        if "data" in params:
+            self.play_state = PlayState.from_dict(params["data"])
+        await self.do_state_update_callbacks()
 
-    async def set_volume(self, volume: int) -> None:
-        """Set the volume of the device."""
-        if not 0 <= volume <= 100:
-            raise StreamMagicError("Volume must be between 0 and 100")
-        await self._request_device('zone/state', query=f"zone=ZONE1&volume_percent={str(volume)}")
-
-    async def mute(self) -> None:
-        """Mute the device."""
-        await self._request_device('zone/state', query='zone=ZONE1&mute=true')
-
-    async def unmute(self) -> None:
-        """Unmute the device."""
-        await self._request_device('zone/state', query='zone=ZONE1&mute=false')
-
-    async def set_source(self, source: Source) -> None:
-        """Set the source of the device."""
-        await self.set_source_by_id(source.id)
-
-    async def set_source_by_id(self, source_id: str) -> None:
-        """Set the source of the device."""
-        await self._request_device('zone/state', query=f"zone=ZONE1&source={source_id}")
-
-    async def media_seek(self, position: int) -> None:
-        """Set the media position of the device."""
-        await self._request_device('zone/play_control', query=f"position={position}")
-
-    async def next_track(self) -> None:
-        """Skip the next track."""
-        await self._request_device('zone/play_control', query='skip_track=1')
-
-    async def previous_track(self) -> None:
-        """Skip the next track."""
-        await self._request_device('zone/play_control', query='skip_track=-1')
-
-    async def play_pause(self) -> None:
-        """Toggle play/pause."""
-        await self._request_device('zone/play_control', query='action=toggle')
-
-    async def pause(self) -> None:
-        """Pause the device."""
-        await self._request_device('zone/play_control', query='action=pause')
-
-    async def stop(self) -> None:
-        """Pause the device."""
-        await self._request_device('zone/play_control', query='action=stop')
-
-    async def set_shuffle(self, shuffle: str):
-        """Set the shuffle of the device."""
-        await self._request_device('zone/play_control', query=f"mode_shuffle={shuffle}")
-
-    async def set_repeat(self, repeat: str):
-        """Set the repeat of the device."""
-        await self._request_device('zone/play_control', query=f"mode_repeat={repeat}")
+    async def _async_handle_position(self, payload) -> None:
+        """Handle async position update."""
+        params = payload["params"]
+        if "data" in params and params["data"]["position"] and self.play_state:
+            self.play_state.position = params["data"]["position"]
+        await self.do_state_update_callbacks()
+    #
+    # async def power_on(self) -> None:
+    #     """Set the power of the device to on."""
+    #     await self._request_device('system/power', query='power=ON')
+    #
+    # async def power_off(self) -> None:
+    #     """Set the power of the device to network."""
+    #     await self._request_device('system/power', query='power=NETWORK')
+    #
+    # async def volume_up(self) -> None:
+    #     """Increase the volume of the device by 1."""
+    #     await self._request_device('zone/state', query='zone=ZONE1&volume_step_change=1')
+    #
+    # async def volume_down(self) -> None:
+    #     """Increase the volume of the device by -1."""
+    #     await self._request_device('zone/state', query='zone=ZONE1&volume_step_change=-1')
+    #
+    # async def set_volume(self, volume: int) -> None:
+    #     """Set the volume of the device."""
+    #     if not 0 <= volume <= 100:
+    #         raise StreamMagicError("Volume must be between 0 and 100")
+    #     await self._request_device('zone/state', query=f"zone=ZONE1&volume_percent={str(volume)}")
+    #
+    # async def mute(self) -> None:
+    #     """Mute the device."""
+    #     await self._request_device('zone/state', query='zone=ZONE1&mute=true')
+    #
+    # async def unmute(self) -> None:
+    #     """Unmute the device."""
+    #     await self._request_device('zone/state', query='zone=ZONE1&mute=false')
+    #
+    # async def set_source(self, source: Source) -> None:
+    #     """Set the source of the device."""
+    #     await self.set_source_by_id(source.id)
+    #
+    # async def set_source_by_id(self, source_id: str) -> None:
+    #     """Set the source of the device."""
+    #     await self._request_device('zone/state', query=f"zone=ZONE1&source={source_id}")
+    #
+    # async def media_seek(self, position: int) -> None:
+    #     """Set the media position of the device."""
+    #     await self._request_device('zone/play_control', query=f"position={position}")
+    #
+    # async def next_track(self) -> None:
+    #     """Skip the next track."""
+    #     await self._request_device('zone/play_control', query='skip_track=1')
+    #
+    # async def previous_track(self) -> None:
+    #     """Skip the next track."""
+    #     await self._request_device('zone/play_control', query='skip_track=-1')
+    #
+    # async def play_pause(self) -> None:
+    #     """Toggle play/pause."""
+    #     await self._request_device('zone/play_control', query='action=toggle')
+    #
+    # async def pause(self) -> None:
+    #     """Pause the device."""
+    #     await self._request_device('zone/play_control', query='action=pause')
+    #
+    # async def stop(self) -> None:
+    #     """Pause the device."""
+    #     await self._request_device('zone/play_control', query='action=stop')
+    #
+    # async def set_shuffle(self, shuffle: str):
+    #     """Set the shuffle of the device."""
+    #     await self._request_device('zone/play_control', query=f"mode_shuffle={shuffle}")
+    #
+    # async def set_repeat(self, repeat: str):
+    #     """Set the repeat of the device."""
+    #     await self._request_device('zone/play_control', query=f"mode_repeat={repeat}")
