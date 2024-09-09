@@ -1,23 +1,16 @@
 """Asynchronous Python client for StreamMagic API."""
 import asyncio
 import json
-import socket
 from asyncio import AbstractEventLoop, Future, Task
-from collections import defaultdict
-from dataclasses import dataclass
+from datetime import datetime
 from typing import Any
 
 import websockets
-from aiohttp import ClientSession, ClientError, ClientResponseError
-from aiohttp.hdrs import METH_GET
 from websockets import WebSocketClientProtocol
-from yarl import URL
-
-from aiostreammagic.exceptions import StreamMagicError, StreamMagicConnectionError
-from aiostreammagic.models import Info, Source, State, PlayState, NowPlaying
-
 from websockets.client import connect as ws_connect
 
+from aiostreammagic.exceptions import StreamMagicError
+from aiostreammagic.models import Info, Source, State, PlayState, NowPlaying
 from . import endpoints as ep
 from .const import _LOGGER
 
@@ -42,6 +35,7 @@ class StreamMagicClient:
         self.state: State | None = None
         self.play_state: PlayState | None = None
         self.now_playing: NowPlaying | None = None
+        self.position_last_updated: datetime = datetime.now()
 
     async def register_state_update_callbacks(self, callback: Any):
         """Register state update callback."""
@@ -195,9 +189,9 @@ class StreamMagicClient:
         message = response["message"]
         result = response["result"]
         if result != 200:
-            raise StreamMagicError("Error!")
+            raise StreamMagicError(message)
 
-        return response["params"]["data"]
+        return response
 
     async def subscribe(self, callback: Any, path: str) -> Any:
         self._subscriptions[path] = callback
@@ -210,28 +204,28 @@ class StreamMagicClient:
     async def get_info(self) -> Info:
         """Get device information from device."""
         data = await self.request(ep.INFO)
-        return Info.from_dict(data)
+        return Info.from_dict(data["params"]["data"])
 
     async def get_sources(self) -> list[Source]:
         """Get source information from device."""
         data = await self.request(ep.SOURCES)
-        sources = [Source.from_dict(x) for x in data["sources"]]
+        sources = [Source.from_dict(x) for x in data["params"]["data"]["sources"]]
         return sources
 
     async def get_state(self) -> State:
         """Get state information from device."""
         data = await self.request(ep.ZONE_STATE)
-        return State.from_dict(data)
+        return State.from_dict(data["params"]["data"])
 
     async def get_play_state(self) -> PlayState:
         """Get play state information from device."""
         data = await self.request(ep.PLAY_STATE)
-        return PlayState.from_dict(data)
+        return PlayState.from_dict(data["params"]["data"])
 
     async def get_now_playing(self) -> NowPlaying:
         """Get now playing information from device."""
         data = await self.request(ep.NOW_PLAYING)
-        return NowPlaying.from_dict(data)
+        return NowPlaying.from_dict(data["params"]["data"])
 
     async def _async_handle_info(self, payload) -> None:
         """Handle async info update."""
@@ -259,6 +253,7 @@ class StreamMagicClient:
         params = payload["params"]
         if "data" in params:
             self.play_state = PlayState.from_dict(params["data"])
+            self.position_last_updated = datetime.now()
         await self.do_state_update_callbacks()
 
     async def _async_handle_position(self, payload) -> None:
@@ -266,6 +261,7 @@ class StreamMagicClient:
         params = payload["params"]
         if "data" in params and params["data"]["position"] and self.play_state:
             self.play_state.position = params["data"]["position"]
+            self.position_last_updated = datetime.now()
         await self.do_state_update_callbacks()
 
     async def _async_handle_now_playing(self, payload) -> None:
