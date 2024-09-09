@@ -48,6 +48,18 @@ class State(DataClassORJSONMixin):
 
 
 @dataclass
+class PlayState(DataClassORJSONMixin):
+    """Data class representing StreamMagic play state."""
+
+    state: str = field(metadata=field_options(alias="state"), default="not_ready")
+    metadata: PlayStateMetadata = field(metadata=field_options(alias="metadata"), default=None)
+    presettable: bool = field(metadata=field_options(alias="presettable"), default=False)
+    position: int = field(metadata=field_options(alias="position"), default=None)
+    mode_repeat: str = field(metadata=field_options(alias="mode_repeat"), default="off")
+    mode_shuffle: str = field(metadata=field_options(alias="mode_shuffle"), default="off")
+
+
+@dataclass
 class PlayStateMetadata(DataClassORJSONMixin):
     """Data class representing StreamMagic play state metadata."""
 
@@ -72,12 +84,6 @@ class PlayStateMetadata(DataClassORJSONMixin):
 
 
 @dataclass
-class PlayState(DataClassORJSONMixin):
-    """Data class representing StreamMagic play state."""
-
-    state: str = field(metadata=field_options(alias="state"), default="not_ready")
-    metadata: PlayStateMetadata = field(metadata=field_options(alias="metadata"), default=PlayStateMetadata())
-    presettable: bool = field(metadata=field_options(alias="presettable"), default=False)
-    position: int = field(metadata=field_options(alias="position"), default=None)
-    mode_repeat: str = field(metadata=field_options(alias="mode_repeat"), default="off")
-    mode_shuffle: str = field(metadata=field_options(alias="mode_shuffle"), default="off")
+class NowPlaying(DataClassORJSONMixin):
+    """Data class representing NowPlaying state."""
+    controls: list[str] = field(metadata=field_options(alias="controls"), default=None)

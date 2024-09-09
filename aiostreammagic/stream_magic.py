@@ -14,7 +14,7 @@ from websockets import WebSocketClientProtocol
 from yarl import URL
 
 from aiostreammagic.exceptions import StreamMagicError, StreamMagicConnectionError
-from aiostreammagic.models import Info, Source, State, PlayState
+from aiostreammagic.models import Info, Source, State, PlayState, NowPlaying
 
 from websockets.client import connect as ws_connect
 
@@ -36,15 +36,18 @@ class StreamMagicClient:
         self.connect_result: Future | None = None
         self.connect_task: Task | None = None
         self.state_update_callbacks: list[Any] = []
+        self._allow_state_update = False
         self.info: Info | None = None
         self.sources: list[Source] | None = None
         self.state: State | None = None
         self.play_state: PlayState | None = None
+        self.now_playing: NowPlaying | None = None
 
     async def register_state_update_callbacks(self, callback: Any):
         """Register state update callback."""
         self.state_update_callbacks.append(callback)
-        await callback(self)
+        if self._allow_state_update:
+            await callback(self)
 
     def unregister_state_update_callbacks(self, callback: Any):
         """Unregister state update callback."""
@@ -57,6 +60,8 @@ class StreamMagicClient:
 
     async def do_state_update_callbacks(self):
         """Call state update callbacks."""
+        if not self.state_update_callbacks:
+            return
         callbacks = set()
         for callback in self.state_update_callbacks:
             callbacks.add(callback(self))
@@ -87,24 +92,27 @@ class StreamMagicClient:
     async def connect_handler(self, res):
         """Handle connection for StreamMagic."""
         self.futures = {}
+        self._allow_state_update = False
         uri = f"ws://{self.host}/smoip"
         ws = await self._ws_connect(uri)
         self.connection = ws
         x = asyncio.create_task(
             self.consumer_handler(ws, self._subscriptions, self.futures)
         )
-        self.info, self.sources = await asyncio.gather(self.get_info(), self.get_sources())
+        self.info, self.sources, self.state, self.play_state, self.now_playing = await asyncio.gather(self.get_info(), self.get_sources(), self.get_state(), self.get_play_state(), self.get_now_playing())
         subscribe_state_updates = {
             self.subscribe(self._async_handle_info, ep.INFO),
             self.subscribe(self._async_handle_sources, ep.SOURCES),
             self.subscribe(self._async_handle_zone_state, ep.ZONE_STATE),
             self.subscribe(self._async_handle_play_state, ep.PLAY_STATE),
             self.subscribe(self._async_handle_position, ep.POSITION),
+            self.subscribe(self._async_handle_now_playing, ep.NOW_PLAYING)
         }
         subscribe_tasks = set()
         for state_update in subscribe_state_updates:
             subscribe_tasks.add(asyncio.create_task(state_update))
         await asyncio.wait(subscribe_tasks)
+        self._allow_state_update = True
 
         res.set_result(True)
         await asyncio.wait([x], return_when=asyncio.FIRST_COMPLETED)
@@ -220,6 +228,11 @@ class StreamMagicClient:
         data = await self.request(ep.PLAY_STATE)
         return PlayState.from_dict(data)
 
+    async def get_now_playing(self) -> NowPlaying:
+        """Get now playing information from device."""
+        data = await self.request(ep.NOW_PLAYING)
+        return NowPlaying.from_dict(data)
+
     async def _async_handle_info(self, payload) -> None:
         """Handle async info update."""
         params = payload["params"]
@@ -254,15 +267,22 @@ class StreamMagicClient:
         if "data" in params and params["data"]["position"] and self.play_state:
             self.play_state.position = params["data"]["position"]
         await self.do_state_update_callbacks()
-    #
-    # async def power_on(self) -> None:
-    #     """Set the power of the device to on."""
-    #     await self._request_device('system/power', query='power=ON')
-    #
-    # async def power_off(self) -> None:
-    #     """Set the power of the device to network."""
-    #     await self._request_device('system/power', query='power=NETWORK')
-    #
+
+    async def _async_handle_now_playing(self, payload) -> None:
+        """Handle async now playing update."""
+        params = payload["params"]
+        if "data" in params:
+            self.now_playing = NowPlaying.from_dict(params["data"])
+        await self.do_state_update_callbacks()
+
+    async def power_on(self) -> None:
+        """Set the power of the device to on."""
+        await self.request(ep.POWER, params={"power": "ON"})
+
+    async def power_off(self) -> None:
+        """Set the power of the device to network."""
+        await self.request(ep.POWER, params={"power": "NETWORK"})
+
     # async def volume_up(self) -> None:
     #     """Increase the volume of the device by 1."""
     #     await self._request_device('zone/state', query='zone=ZONE1&volume_step_change=1')
@@ -284,39 +304,39 @@ class StreamMagicClient:
     # async def unmute(self) -> None:
     #     """Unmute the device."""
     #     await self._request_device('zone/state', query='zone=ZONE1&mute=false')
-    #
-    # async def set_source(self, source: Source) -> None:
-    #     """Set the source of the device."""
-    #     await self.set_source_by_id(source.id)
-    #
-    # async def set_source_by_id(self, source_id: str) -> None:
-    #     """Set the source of the device."""
-    #     await self._request_device('zone/state', query=f"zone=ZONE1&source={source_id}")
-    #
+
+    async def set_source(self, source: Source) -> None:
+        """Set the source of the device."""
+        await self.set_source_by_id(source.id)
+
+    async def set_source_by_id(self, source_id: str) -> None:
+        """Set the source of the device."""
+        await self.request(ep.ZONE_STATE, params={"zone": "ZONE1", "source": source_id})
+
     # async def media_seek(self, position: int) -> None:
     #     """Set the media position of the device."""
     #     await self._request_device('zone/play_control', query=f"position={position}")
-    #
-    # async def next_track(self) -> None:
-    #     """Skip the next track."""
-    #     await self._request_device('zone/play_control', query='skip_track=1')
-    #
-    # async def previous_track(self) -> None:
-    #     """Skip the next track."""
-    #     await self._request_device('zone/play_control', query='skip_track=-1')
-    #
-    # async def play_pause(self) -> None:
-    #     """Toggle play/pause."""
-    #     await self._request_device('zone/play_control', query='action=toggle')
-    #
-    # async def pause(self) -> None:
-    #     """Pause the device."""
-    #     await self._request_device('zone/play_control', query='action=pause')
-    #
-    # async def stop(self) -> None:
-    #     """Pause the device."""
-    #     await self._request_device('zone/play_control', query='action=stop')
-    #
+
+    async def next_track(self) -> None:
+        """Skip the next track."""
+        await self.request(ep.PLAY_CONTROL, params={"match": "none", "zone": "ZONE1", "skip_track": 1})
+
+    async def previous_track(self) -> None:
+        """Skip the next track."""
+        await self.request(ep.PLAY_CONTROL, params={"match": "none", "zone": "ZONE1", "skip_track": -1})
+
+    async def play_pause(self) -> None:
+        """Toggle play/pause."""
+        await self.request(ep.PLAY_CONTROL, params={"match": "none", "zone": "ZONE1", "action": "toggle"})
+
+    async def pause(self) -> None:
+        """Pause the device."""
+        await self.request(ep.PLAY_CONTROL, params={"match": "none", "zone": "ZONE1", "action": "pause"})
+
+    async def stop(self) -> None:
+        """Pause the device."""
+        await self.request(ep.PLAY_CONTROL, params={"match": "none", "zone": "ZONE1", "action": "stop"})
+
     # async def set_shuffle(self, shuffle: str):
     #     """Set the shuffle of the device."""
     #     await self._request_device('zone/play_control', query=f"mode_shuffle={shuffle}")
