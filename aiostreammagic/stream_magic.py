@@ -2,7 +2,7 @@
 import asyncio
 import json
 from asyncio import AbstractEventLoop, Future, Task
-from datetime import datetime
+from datetime import datetime, UTC
 from typing import Any
 
 import websockets
@@ -128,7 +128,6 @@ class StreamMagicClient:
         subscription_tasks = {}
         try:
             async for raw_msg in ws:
-                print(futures or subscriptions)
                 if futures or subscriptions:
                     _LOGGER.debug("recv(%s): %s", self.host, raw_msg)
                     msg = json.loads(raw_msg)
@@ -185,7 +184,6 @@ class StreamMagicClient:
                 path_futures.remove(res)
             raise
         path_futures.remove(res)
-        print(response)
         message = response["message"]
         result = response["result"]
         if result != 200:
@@ -261,7 +259,7 @@ class StreamMagicClient:
         params = payload["params"]
         if "data" in params and params["data"]["position"] and self.play_state:
             self.play_state.position = params["data"]["position"]
-            self.position_last_updated = datetime.now()
+            self.position_last_updated = datetime.now(UTC)
         await self.do_state_update_callbacks()
 
     async def _async_handle_now_playing(self, payload) -> None:
