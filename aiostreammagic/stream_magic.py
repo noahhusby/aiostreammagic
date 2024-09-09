@@ -72,6 +72,15 @@ class StreamMagicClient:
             )
         return await self.connect_result
 
+    async def disconnect(self):
+        """Disconnect from StreamMagic enabled devices."""
+        if self.is_connected():
+            self.connect_task.cancel()
+            try:
+                await self.connect_task
+            except asyncio.CancelledError:
+                pass
+
     def is_connected(self) -> bool:
         """Return True if device is connected."""
         return self.connect_task is not None and self.connect_task.done()
