@@ -286,27 +286,27 @@ class StreamMagicClient:
         """Set the power of the device to network."""
         await self.request(ep.POWER, params={"power": "NETWORK"})
 
-    # async def volume_up(self) -> None:
-    #     """Increase the volume of the device by 1."""
-    #     await self._request_device('zone/state', query='zone=ZONE1&volume_step_change=1')
-    #
-    # async def volume_down(self) -> None:
-    #     """Increase the volume of the device by -1."""
-    #     await self._request_device('zone/state', query='zone=ZONE1&volume_step_change=-1')
-    #
-    # async def set_volume(self, volume: int) -> None:
-    #     """Set the volume of the device."""
-    #     if not 0 <= volume <= 100:
-    #         raise StreamMagicError("Volume must be between 0 and 100")
-    #     await self._request_device('zone/state', query=f"zone=ZONE1&volume_percent={str(volume)}")
-    #
-    # async def mute(self) -> None:
-    #     """Mute the device."""
-    #     await self._request_device('zone/state', query='zone=ZONE1&mute=true')
-    #
-    # async def unmute(self) -> None:
-    #     """Unmute the device."""
-    #     await self._request_device('zone/state', query='zone=ZONE1&mute=false')
+    async def volume_up(self) -> None:
+        """Increase the volume of the device by 1."""
+        await self.request(ep.ZONE_STATE, params={"zone": "ZONE1", "volume_step_change": 1})
+
+    async def volume_down(self) -> None:
+        """Increase the volume of the device by -1."""
+        await self.request(ep.ZONE_STATE, params={"zone": "ZONE1", "volume_step_change": -1})
+
+    async def set_volume(self, volume: int) -> None:
+        """Set the volume of the device."""
+        if not 0 <= volume <= 100:
+            raise StreamMagicError("Volume must be between 0 and 100")
+        await self.request(ep.ZONE_STATE, params={"zone": "ZONE1", "volume_percent": volume})
+
+    async def mute(self) -> None:
+        """Mute the device."""
+        await self.request(ep.ZONE_STATE, params={"zone": "ZONE1", "mute": True})
+
+    async def unmute(self) -> None:
+        """Unmute the device."""
+        await self.request(ep.ZONE_STATE, params={"zone": "ZONE1", "mute": False})
 
     async def set_source(self, source: Source) -> None:
         """Set the source of the device."""
