@@ -109,6 +109,7 @@ class TransportControl(StrEnum):
     """Control enum."""
 
     PAUSE = "pause"
+    PLAY = "play"
     PLAY_PAUSE = "play_pause"
     TOGGLE_SHUFFLE = "toggle_shuffle"
     TOGGLE_REPEAT = "toggle_repeat"
