@@ -1,0 +1,24 @@
+---
+repos:
+  - repo: local
+    hooks:
+      - id: ruff-check
+        name: 🐶 Ruff Linter
+        language: system
+        types: [python]
+        entry: poetry run ruff check --fix
+        require_serial: true
+        stages: [commit, push, manual]
+      - id: ruff-format
+        name: 🐶 Ruff Formatter
+        language: system
+        types: [python]
+        entry: poetry run ruff format
+        require_serial: true
+        stages: [commit, push, manual]
+      - id: pytest
+        name: 🧪 Running tests and test coverage with pytest
+        language: system
+        types: [python]
+        entry: poetry run pytest
+        pass_filenames: false

@@ -1,4 +1,5 @@
 """Asynchronous Python client for StreamMagic API."""
+
 import asyncio
 import json
 from asyncio import AbstractEventLoop, Future, Task
@@ -10,11 +11,19 @@ from websockets import WebSocketClientProtocol
 from websockets.client import connect as ws_connect
 
 from aiostreammagic.exceptions import StreamMagicError
-from aiostreammagic.models import Info, Source, State, PlayState, NowPlaying
+from aiostreammagic.models import (
+    Info,
+    Source,
+    State,
+    PlayState,
+    NowPlaying,
+    ShuffleMode,
+    RepeatMode,
+)
 from . import endpoints as ep
 from .const import _LOGGER
 
-VERSION = '1.0.0'
+VERSION = "1.0.0"
 
 
 class StreamMagicClient:
@@ -89,7 +98,7 @@ class StreamMagicClient:
         """Establish a connection with a WebSocket."""
         return await ws_connect(
             uri,
-            extra_headers={"Origin": f"ws://{self.host}", "Host": f"{self.host}:80"}
+            extra_headers={"Origin": f"ws://{self.host}", "Host": f"{self.host}:80"},
         )
 
     async def connect_handler(self, res):
@@ -102,14 +111,26 @@ class StreamMagicClient:
         x = asyncio.create_task(
             self.consumer_handler(ws, self._subscriptions, self.futures)
         )
-        self.info, self.sources, self.state, self.play_state, self.now_playing = await asyncio.gather(self.get_info(), self.get_sources(), self.get_state(), self.get_play_state(), self.get_now_playing())
+        (
+            self.info,
+            self.sources,
+            self.state,
+            self.play_state,
+            self.now_playing,
+        ) = await asyncio.gather(
+            self.get_info(),
+            self.get_sources(),
+            self.get_state(),
+            self.get_play_state(),
+            self.get_now_playing(),
+        )
         subscribe_state_updates = {
             self.subscribe(self._async_handle_info, ep.INFO),
             self.subscribe(self._async_handle_sources, ep.SOURCES),
             self.subscribe(self._async_handle_zone_state, ep.ZONE_STATE),
             self.subscribe(self._async_handle_play_state, ep.PLAY_STATE),
             self.subscribe(self._async_handle_position, ep.POSITION),
-            self.subscribe(self._async_handle_now_playing, ep.NOW_PLAYING)
+            self.subscribe(self._async_handle_now_playing, ep.NOW_PLAYING),
         }
         subscribe_tasks = set()
         for state_update in subscribe_state_updates:
@@ -130,8 +151,12 @@ class StreamMagicClient:
         except asyncio.CancelledError:
             pass
 
-    async def consumer_handler(self, ws: WebSocketClientProtocol, subscriptions: dict[str, list[Any]],
-                               futures: dict[str, list[asyncio.Future]]):
+    async def consumer_handler(
+        self,
+        ws: WebSocketClientProtocol,
+        subscriptions: dict[str, list[Any]],
+        futures: dict[str, list[asyncio.Future]],
+    ):
         """Callback consumer handler."""
         subscription_queues = {}
         subscription_tasks = {}
@@ -157,9 +182,9 @@ class StreamMagicClient:
                         subscription_queues[path].put_nowait(msg)
 
         except (
-                asyncio.CancelledError,
-                websockets.exceptions.ConnectionClosedError,
-                websockets.exceptions.ConnectionClosedOK,
+            asyncio.CancelledError,
+            websockets.exceptions.ConnectionClosedError,
+            websockets.exceptions.ConnectionClosedOK,
         ):
             pass
 
@@ -288,25 +313,27 @@ class StreamMagicClient:
 
     async def volume_up(self) -> None:
         """Increase the volume of the device by 1."""
-        await self.request(ep.ZONE_STATE, params={"zone": "ZONE1", "volume_step_change": 1})
+        await self.request(
+            ep.ZONE_STATE, params={"zone": "ZONE1", "volume_step_change": 1}
+        )
 
     async def volume_down(self) -> None:
         """Increase the volume of the device by -1."""
-        await self.request(ep.ZONE_STATE, params={"zone": "ZONE1", "volume_step_change": -1})
+        await self.request(
+            ep.ZONE_STATE, params={"zone": "ZONE1", "volume_step_change": -1}
+        )
 
     async def set_volume(self, volume: int) -> None:
         """Set the volume of the device."""
         if not 0 <= volume <= 100:
             raise StreamMagicError("Volume must be between 0 and 100")
-        await self.request(ep.ZONE_STATE, params={"zone": "ZONE1", "volume_percent": volume})
+        await self.request(
+            ep.ZONE_STATE, params={"zone": "ZONE1", "volume_percent": volume}
+        )
 
-    async def mute(self) -> None:
-        """Mute the device."""
-        await self.request(ep.ZONE_STATE, params={"zone": "ZONE1", "mute": True})
-
-    async def unmute(self) -> None:
-        """Unmute the device."""
-        await self.request(ep.ZONE_STATE, params={"zone": "ZONE1", "mute": False})
+    async def set_mute(self, mute: bool) -> None:
+        """Set the mute of the device."""
+        await self.request(ep.ZONE_STATE, params={"zone": "ZONE1", "mute": mute})
 
     async def set_source(self, source: Source) -> None:
         """Set the source of the device."""
@@ -316,34 +343,54 @@ class StreamMagicClient:
         """Set the source of the device."""
         await self.request(ep.ZONE_STATE, params={"zone": "ZONE1", "source": source_id})
 
-    # async def media_seek(self, position: int) -> None:
-    #     """Set the media position of the device."""
-    #     await self._request_device('zone/play_control', query=f"position={position}")
+    async def media_seek(self, position: int) -> None:
+        """Set the media position of the device."""
+        await self.request(
+            ep.PLAY_CONTROL, params={"zone": "ZONE1", "position": position}
+        )
 
     async def next_track(self) -> None:
         """Skip the next track."""
-        await self.request(ep.PLAY_CONTROL, params={"match": "none", "zone": "ZONE1", "skip_track": 1})
+        await self.request(
+            ep.PLAY_CONTROL, params={"match": "none", "zone": "ZONE1", "skip_track": 1}
+        )
 
     async def previous_track(self) -> None:
         """Skip the next track."""
-        await self.request(ep.PLAY_CONTROL, params={"match": "none", "zone": "ZONE1", "skip_track": -1})
+        await self.request(
+            ep.PLAY_CONTROL, params={"match": "none", "zone": "ZONE1", "skip_track": -1}
+        )
 
     async def play_pause(self) -> None:
         """Toggle play/pause."""
-        await self.request(ep.PLAY_CONTROL, params={"match": "none", "zone": "ZONE1", "action": "toggle"})
+        await self.request(
+            ep.PLAY_CONTROL,
+            params={"match": "none", "zone": "ZONE1", "action": "toggle"},
+        )
 
     async def pause(self) -> None:
         """Pause the device."""
-        await self.request(ep.PLAY_CONTROL, params={"match": "none", "zone": "ZONE1", "action": "pause"})
+        await self.request(
+            ep.PLAY_CONTROL,
+            params={"match": "none", "zone": "ZONE1", "action": "pause"},
+        )
 
     async def stop(self) -> None:
         """Pause the device."""
-        await self.request(ep.PLAY_CONTROL, params={"match": "none", "zone": "ZONE1", "action": "stop"})
+        await self.request(
+            ep.PLAY_CONTROL, params={"match": "none", "zone": "ZONE1", "action": "stop"}
+        )
 
-    # async def set_shuffle(self, shuffle: str):
-    #     """Set the shuffle of the device."""
-    #     await self._request_device('zone/play_control', query=f"mode_shuffle={shuffle}")
-    #
-    # async def set_repeat(self, repeat: str):
-    #     """Set the repeat of the device."""
-    #     await self._request_device('zone/play_control', query=f"mode_repeat={repeat}")
+    async def set_shuffle(self, shuffle: ShuffleMode):
+        """Set the shuffle of the device."""
+        await self.request(
+            ep.PLAY_CONTROL,
+            params={"match": "none", "zone": "ZONE1", "mode_shuffle": shuffle},
+        )
+
+    async def set_repeat(self, repeat: RepeatMode):
+        """Set the repeat of the device."""
+        await self.request(
+            ep.PLAY_CONTROL,
+            params={"match": "none", "zone": "ZONE1", "mode_repeat": repeat},
+        )
