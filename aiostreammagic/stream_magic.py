@@ -368,6 +368,13 @@ class StreamMagicClient:
             params={"match": "none", "zone": "ZONE1", "action": "toggle"},
         )
 
+    async def play(self) -> None:
+        """Play the device."""
+        await self.request(
+            ep.PLAY_CONTROL,
+            params={"match": "none", "zone": "ZONE1", "action": "play"},
+        )
+
     async def pause(self) -> None:
         """Pause the device."""
         await self.request(
