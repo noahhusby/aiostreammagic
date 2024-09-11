@@ -93,7 +93,7 @@ class StreamMagicClient:
 
     def is_connected(self) -> bool:
         """Return True if device is connected."""
-        return self.connect_task is not None and self.connect_task.done()
+        return self.connect_task is not None and not self.connect_task.done()
 
     async def _ws_connect(self, uri):
         """Establish a connection with a WebSocket."""
