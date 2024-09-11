@@ -89,6 +89,7 @@ class StreamMagicClient:
                 await self.connect_task
             except asyncio.CancelledError:
                 pass
+            await self.do_state_update_callbacks()
 
     def is_connected(self) -> bool:
         """Return True if device is connected."""
@@ -139,6 +140,7 @@ class StreamMagicClient:
         self._allow_state_update = True
 
         res.set_result(True)
+        await self.do_state_update_callbacks()
         await asyncio.wait([x], return_when=asyncio.FIRST_COMPLETED)
 
     @staticmethod

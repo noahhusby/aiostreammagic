@@ -13,6 +13,7 @@ async def on_state_change(client: StreamMagicClient):
     print(f"Play State: {client.get_play_state()}")
     print(f"Now Playing: {client.get_now_playing()}")
 
+
 async def main():
     """Subscribe demo entrypoint."""
     client = StreamMagicClient("192.168.20.218")
@@ -25,5 +26,5 @@ async def main():
     await client.disconnect()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     asyncio.run(main())
