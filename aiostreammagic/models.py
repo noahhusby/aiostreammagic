@@ -132,3 +132,10 @@ class RepeatMode(StrEnum):
     OFF = "off"
     ALL = "all"
     TOGGLE = "toggle"
+
+
+class CallbackType(StrEnum):
+    """Callback type."""
+
+    STATE = "state"
+    CONNECTION = "connection"

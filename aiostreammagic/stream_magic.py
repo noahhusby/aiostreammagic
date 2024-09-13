@@ -19,6 +19,7 @@ from aiostreammagic.models import (
     NowPlaying,
     ShuffleMode,
     RepeatMode,
+    CallbackType,
 )
 from . import endpoints as ep
 from .const import _LOGGER
@@ -50,7 +51,7 @@ class StreamMagicClient:
         """Register state update callback."""
         self.state_update_callbacks.append(callback)
         if self._allow_state_update:
-            await callback(self)
+            await callback(self, CallbackType.STATE)
 
     def unregister_state_update_callbacks(self, callback: Any):
         """Unregister state update callback."""
@@ -61,13 +62,15 @@ class StreamMagicClient:
         """Clear state update callbacks."""
         self.state_update_callbacks.clear()
 
-    async def do_state_update_callbacks(self):
+    async def do_state_update_callbacks(
+        self, callback_type: CallbackType = CallbackType.STATE
+    ):
         """Call state update callbacks."""
         if not self.state_update_callbacks:
             return
         callbacks = set()
         for callback in self.state_update_callbacks:
-            callbacks.add(callback(self))
+            callbacks.add(callback(self, callback_type))
 
         if callbacks:
             await asyncio.gather(*callbacks)
@@ -89,7 +92,7 @@ class StreamMagicClient:
                 await self.connect_task
             except asyncio.CancelledError:
                 pass
-            await self.do_state_update_callbacks()
+            await self.do_state_update_callbacks(CallbackType.CONNECTION)
 
     def is_connected(self) -> bool:
         """Return True if device is connected."""
@@ -140,7 +143,7 @@ class StreamMagicClient:
         self._allow_state_update = True
 
         res.set_result(True)
-        await self.do_state_update_callbacks()
+        await self.do_state_update_callbacks(CallbackType.CONNECTION)
         await asyncio.wait([x], return_when=asyncio.FIRST_COMPLETED)
 
     @staticmethod
