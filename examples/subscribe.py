@@ -1,17 +1,19 @@
 import asyncio
 
 from aiostreammagic import StreamMagicClient
+from aiostreammagic.models import CallbackType
 
 HOST = "192.168.20.218"
 
 
-async def on_state_change(client: StreamMagicClient):
+async def on_state_change(client: StreamMagicClient, callback_type: CallbackType):
     """Called when new information is received."""
-    print(f"System info: {client.get_info()}")
-    print(f"Sources: {client.get_sources()}")
-    print(f"State: {client.get_state()}")
-    print(f"Play State: {client.get_play_state()}")
-    print(f"Now Playing: {client.get_now_playing()}")
+    print(f"Callback Type: {callback_type} {client.is_connected()}")
+    print(f"System info: {client.info}")
+    print(f"Sources: {client.sources}")
+    print(f"State: {client.state}")
+    print(f"Play State: {client.play_state}")
+    print(f"Now Playing: {client.now_playing}")
 
 
 async def main():
