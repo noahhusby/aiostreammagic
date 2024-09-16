@@ -1,4 +1,6 @@
-"""Asynchronous Python client for StreamMagic API."""
+"""
+.. include:: ../README.md
+"""
 
 from .exceptions import StreamMagicError, StreamMagicConnectionError
 from .models import (
