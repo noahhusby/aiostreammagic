@@ -116,6 +116,7 @@ class TransportControl(StrEnum):
     TRACK_NEXT = "track_next"
     TRACK_PREVIOUS = "track_previous"
     SEEK = "seek"
+    STOP = "stop"
 
 
 class ShuffleMode(StrEnum):
