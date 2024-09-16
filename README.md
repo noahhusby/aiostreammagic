@@ -3,6 +3,9 @@
 # aiostreammagic
 
 #### An async python package for interfacing with Cambridge Audio / Stream Magic compatible streamers
+
+[**📖 Read the docs »**][docs]
+
 [![GitHub Release][releases-shield]][releases]
 [![Python Versions][python-versions-shield]][pypi]
 [![Downloads][downloads-shield]][pypi]
@@ -97,6 +100,7 @@ if __name__ == '__main__':
 ```
 
 [license-shield]: https://img.shields.io/github/license/noahhusby/aiostreammagic.svg
+[docs]: https://noahhusby.github.io/aiostreammagic/
 [downloads-shield]: https://img.shields.io/pypi/dm/aiostreammagic
 [python-versions-shield]: https://img.shields.io/pypi/pyversions/aiostreammagic
 [maintenance-shield]: https://img.shields.io/maintenance/yes/2024.svg
