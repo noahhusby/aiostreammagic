@@ -12,7 +12,7 @@
 </div>
 
 # About
-This module implements a Python client for the Stream Magic API used to control Cambridge Audio streamers. The API connects over TCP/IP and supports several streamers, receivers, and pre-amps.
+This module implements a Python client for the Stream Magic API used to control Cambridge Audio streamers. The API connects over websockets and supports several streamers, receivers, and pre-amps.
 
 ## Supported Devices
 - Cambridge Audio Evo 75
