@@ -406,3 +406,20 @@ class StreamMagicClient:
             ep.PLAY_CONTROL,
             params={"match": "none", "zone": "ZONE1", "mode_repeat": repeat},
         )
+
+    async def play_radio_airable(self, name: str, airable_radio_id: int) -> None:
+        """Play an airable radio station."""
+        await self.request(
+            ep.STREAM_RADIO,
+            params={
+                "zone": "ZONE1",
+                "airable_radio_id": airable_radio_id,
+                "name": name,
+            },
+        )
+
+    async def play_radio_url(self, name: str, url: str) -> None:
+        """Play a radio station from a provided url."""
+        await self.request(
+            ep.STREAM_RADIO, params={"zone": "ZONE1", "url": url, "name": name}
+        )
