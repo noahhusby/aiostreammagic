@@ -22,7 +22,7 @@ websockets = "^13.0.1"
 pytest = "8.3.3"
 pytest-asyncio = "0.24.0"
 pytest-cov = "5.0.0"
-ruff = "0.6.5"
+ruff = "0.6.7"
 
 
 [tool.poetry.group.docs.dependencies]
