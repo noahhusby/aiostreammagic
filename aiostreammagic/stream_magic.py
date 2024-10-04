@@ -4,7 +4,7 @@ import asyncio
 import json
 from asyncio import AbstractEventLoop, Future, Task
 from datetime import datetime, UTC
-from typing import Any
+from typing import Any, Optional
 
 import websockets
 from websockets import WebSocketClientProtocol
@@ -45,6 +45,8 @@ class StreamMagicClient:
         self.state: State | None = None
         self.play_state: PlayState | None = None
         self.now_playing: NowPlaying | None = None
+        self._attempt_reconnection = False
+        self._reconnect_task: Optional[Task] = None
         self.position_last_updated: datetime = datetime.now()
 
     async def register_state_update_callbacks(self, callback: Any):
@@ -79,14 +81,15 @@ class StreamMagicClient:
         """Connect to StreamMagic enabled devices."""
         if not self.is_connected():
             self.connect_result = self._loop.create_future()
-            self.connect_task = asyncio.create_task(
-                self.connect_handler(self.connect_result)
+            self._reconnect_task = asyncio.create_task(
+                self._reconnect_handler(self.connect_result)
             )
         return await self.connect_result
 
     async def disconnect(self):
         """Disconnect from StreamMagic enabled devices."""
         if self.is_connected():
+            self._attempt_reconnection = False
             self.connect_task.cancel()
             try:
                 await self.connect_task
@@ -105,46 +108,74 @@ class StreamMagicClient:
             extra_headers={"Origin": f"ws://{self.host}", "Host": f"{self.host}:80"},
         )
 
-    async def connect_handler(self, res):
-        """Handle connection for StreamMagic."""
-        self.futures = {}
-        self._allow_state_update = False
-        uri = f"ws://{self.host}/smoip"
-        ws = await self._ws_connect(uri)
-        self.connection = ws
-        x = asyncio.create_task(
-            self.consumer_handler(ws, self._subscriptions, self.futures)
-        )
-        (
-            self.info,
-            self.sources,
-            self.state,
-            self.play_state,
-            self.now_playing,
-        ) = await asyncio.gather(
-            self.get_info(),
-            self.get_sources(),
-            self.get_state(),
-            self.get_play_state(),
-            self.get_now_playing(),
-        )
-        subscribe_state_updates = {
-            self.subscribe(self._async_handle_info, ep.INFO),
-            self.subscribe(self._async_handle_sources, ep.SOURCES),
-            self.subscribe(self._async_handle_zone_state, ep.ZONE_STATE),
-            self.subscribe(self._async_handle_play_state, ep.PLAY_STATE),
-            self.subscribe(self._async_handle_position, ep.POSITION),
-            self.subscribe(self._async_handle_now_playing, ep.NOW_PLAYING),
-        }
-        subscribe_tasks = set()
-        for state_update in subscribe_state_updates:
-            subscribe_tasks.add(asyncio.create_task(state_update))
-        await asyncio.wait(subscribe_tasks)
-        self._allow_state_update = True
+    async def _reconnect_handler(self, res):
+        reconnect_delay = 0.5
+        while True:
+            try:
+                self.connect_task = asyncio.create_task(self._connect_handler(res))
+                await self.connect_task
+            except Exception as ex:
+                _LOGGER.error(ex)
+                pass
+            await self.do_state_update_callbacks(CallbackType.CONNECTION)
+            if not self._attempt_reconnection:
+                _LOGGER.debug(
+                    "Failed to connect to device on initial pass, skipping reconnect."
+                )
+                break
+            reconnect_delay = min(reconnect_delay * 2, 30)
+            _LOGGER.debug(
+                f"Attempting reconnection to Cambridge Audio device in {reconnect_delay} seconds..."
+            )
+            await asyncio.sleep(reconnect_delay)
 
-        res.set_result(True)
-        await self.do_state_update_callbacks(CallbackType.CONNECTION)
-        await asyncio.wait([x], return_when=asyncio.FIRST_COMPLETED)
+    async def _connect_handler(self, res):
+        """Handle connection for StreamMagic."""
+        try:
+            self.futures = {}
+            self._allow_state_update = False
+            uri = f"ws://{self.host}/smoip"
+            ws = await self._ws_connect(uri)
+            self.connection = ws
+            x = asyncio.create_task(
+                self.consumer_handler(ws, self._subscriptions, self.futures)
+            )
+            (
+                self.info,
+                self.sources,
+                self.state,
+                self.play_state,
+                self.now_playing,
+            ) = await asyncio.gather(
+                self.get_info(),
+                self.get_sources(),
+                self.get_state(),
+                self.get_play_state(),
+                self.get_now_playing(),
+            )
+            subscribe_state_updates = {
+                self.subscribe(self._async_handle_info, ep.INFO),
+                self.subscribe(self._async_handle_sources, ep.SOURCES),
+                self.subscribe(self._async_handle_zone_state, ep.ZONE_STATE),
+                self.subscribe(self._async_handle_play_state, ep.PLAY_STATE),
+                self.subscribe(self._async_handle_position, ep.POSITION),
+                self.subscribe(self._async_handle_now_playing, ep.NOW_PLAYING),
+            }
+            subscribe_tasks = set()
+            for state_update in subscribe_state_updates:
+                subscribe_tasks.add(asyncio.create_task(state_update))
+            await asyncio.wait(subscribe_tasks)
+            self._allow_state_update = True
+            await self.do_state_update_callbacks(CallbackType.CONNECTION)
+
+            self._attempt_reconnection = True
+            if not res.done():
+                res.set_result(True)
+            await asyncio.wait([x], return_when=asyncio.FIRST_COMPLETED)
+        except Exception as ex:
+            if not res.done():
+                res.set_exception(ex)
+            _LOGGER.error(ex, exc_info=True)
 
     @staticmethod
     async def subscription_handler(queue, callback):
