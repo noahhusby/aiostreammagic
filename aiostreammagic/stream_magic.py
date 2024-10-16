@@ -21,6 +21,9 @@ from aiostreammagic.models import (
     RepeatMode,
     CallbackType,
     AudioOutput,
+    Display,
+    DisplayBrightness,
+    Update,
 )
 from . import endpoints as ep
 from .const import _LOGGER
@@ -47,6 +50,8 @@ class StreamMagicClient:
         self.play_state: PlayState | None = None
         self.now_playing: NowPlaying | None = None
         self.audio_output: AudioOutput | None = None
+        self.display: Display | None = None
+        self.update: Update | None = None
         self._attempt_reconnection = False
         self._reconnect_task: Optional[Task] = None
         self.position_last_updated: datetime = datetime.now()
@@ -149,6 +154,8 @@ class StreamMagicClient:
                 self.play_state,
                 self.now_playing,
                 self.audio_output,
+                self.display,
+                self.update,
             ) = await asyncio.gather(
                 self.get_info(),
                 self.get_sources(),
@@ -156,6 +163,8 @@ class StreamMagicClient:
                 self.get_play_state(),
                 self.get_now_playing(),
                 self.get_audio_output(),
+                self.get_display(),
+                self.get_update(),
             )
             subscribe_state_updates = {
                 self.subscribe(self._async_handle_info, ep.INFO),
@@ -165,6 +174,8 @@ class StreamMagicClient:
                 self.subscribe(self._async_handle_position, ep.POSITION),
                 self.subscribe(self._async_handle_now_playing, ep.NOW_PLAYING),
                 self.subscribe(self._async_handle_audio_output, ep.ZONE_AUDIO_OUTPUT),
+                self.subscribe(self._async_handle_display, ep.DISPLAY),
+                self.subscribe(self._async_handle_update, ep.UPDATE),
             }
             subscribe_tasks = set()
             for state_update in subscribe_state_updates:
@@ -305,6 +316,16 @@ class StreamMagicClient:
         data = await self.request(ep.ZONE_AUDIO_OUTPUT)
         return AudioOutput.from_dict(data["params"]["data"])
 
+    async def get_display(self) -> Display:
+        """Get display information from device."""
+        data = await self.request(ep.DISPLAY)
+        return Display.from_dict(data["params"]["data"])
+
+    async def get_update(self) -> Update:
+        """Get display information from device."""
+        data = await self.request(ep.UPDATE)
+        return Update.from_dict(data["params"]["data"])
+
     async def _async_handle_info(self, payload) -> None:
         """Handle async info update."""
         params = payload["params"]
@@ -354,6 +375,20 @@ class StreamMagicClient:
         params = payload["params"]
         if "data" in params:
             self.audio_output = AudioOutput.from_dict(params["data"])
+        await self.do_state_update_callbacks()
+
+    async def _async_handle_display(self, payload) -> None:
+        """Handle async display update."""
+        params = payload["params"]
+        if "data" in params:
+            self.display = Display.from_dict(params["data"])
+        await self.do_state_update_callbacks()
+
+    async def _async_handle_update(self, payload) -> None:
+        """Handle async display update."""
+        params = payload["params"]
+        if "data" in params:
+            self.update = Update.from_dict(params["data"])
         await self.do_state_update_callbacks()
 
     async def power_on(self) -> None:
@@ -476,4 +511,32 @@ class StreamMagicClient:
         """Set the audio output of the device."""
         await self.request(
             ep.ZONE_AUDIO_OUTPUT, params={"zone": "ZONE1", "id": output_id}
+        )
+
+    async def set_pre_amp_mode(self, enabled: bool) -> None:
+        """Sets whether the internal pre-amp is enabled."""
+        await self.request(ep.ZONE_STATE, params={"pre_amp_mode": enabled})
+
+    async def set_volume_limit(self, volume_limit_percent: int) -> None:
+        """Sets the volume limit for the internal pre-amp. Value must be between 0 and 100."""
+        if not 0 <= volume_limit_percent <= 100:
+            raise StreamMagicError("Volume limit must be between 0 and 100")
+        await self.request(
+            ep.ZONE_STATE, params={"volume_limit_percent": volume_limit_percent}
+        )
+
+    async def set_device_name(self, device_name: str) -> None:
+        """Set the device name."""
+        await self.request(ep.INFO, params={"name": device_name})
+
+    async def set_display_brightness(
+        self, display_brightness: DisplayBrightness
+    ) -> None:
+        """Set the display brightness of the device."""
+        await self.request(ep.DISPLAY, params={"brightness": display_brightness})
+
+    async def set_early_update(self, early_update: bool) -> None:
+        """Set whether the device should be on the early update channel."""
+        await self.request(
+            ep.UPDATE, params={"early_update": early_update, "action": "CHECK"}
         )

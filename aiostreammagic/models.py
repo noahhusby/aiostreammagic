@@ -53,6 +53,9 @@ class State(DataClassORJSONMixin):
     audio_output: str = field(
         metadata=field_options(alias="audio_output"), default=None
     )
+    control_bus: ControlBusMode = field(
+        metadata=field_options(alias="cbus"), default="off"
+    )
 
 
 @dataclass
@@ -123,6 +126,22 @@ class Output(DataClassORJSONMixin):
     name: str = field(metadata=field_options(alias="name"))
 
 
+@dataclass
+class Display(DataClassORJSONMixin):
+    brightness: DisplayBrightness = field(metadata=field_options(alias="brightness"))
+
+
+@dataclass
+class Update(DataClassORJSONMixin):
+    early_update: bool = field(
+        metadata=field_options(alias="early_update"), default=False
+    )
+    update_available: bool = field(
+        metadata=field_options(alias="update_available"), default=False
+    )
+    updating: bool = field(metadata=field_options(alias="updating"), default=False)
+
+
 class TransportControl(StrEnum):
     """Control enum."""
 
@@ -158,3 +177,19 @@ class CallbackType(StrEnum):
 
     STATE = "state"
     CONNECTION = "connection"
+
+
+class DisplayBrightness(StrEnum):
+    """Display brightness."""
+
+    BRIGHT = "bright"
+    DIM = "dim"
+    OFF = "off"
+
+
+class ControlBusMode(StrEnum):
+    """Control bus mode."""
+
+    AMPLIFIER = "amplifier"
+    RECEIVER = "receiver"
+    OFF = "off"
