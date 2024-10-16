@@ -20,6 +20,7 @@ from aiostreammagic.models import (
     ShuffleMode,
     RepeatMode,
     CallbackType,
+    AudioOutput,
 )
 from . import endpoints as ep
 from .const import _LOGGER
@@ -45,6 +46,7 @@ class StreamMagicClient:
         self.state: State | None = None
         self.play_state: PlayState | None = None
         self.now_playing: NowPlaying | None = None
+        self.audio_output: AudioOutput | None = None
         self._attempt_reconnection = False
         self._reconnect_task: Optional[Task] = None
         self.position_last_updated: datetime = datetime.now()
@@ -146,12 +148,14 @@ class StreamMagicClient:
                 self.state,
                 self.play_state,
                 self.now_playing,
+                self.audio_output,
             ) = await asyncio.gather(
                 self.get_info(),
                 self.get_sources(),
                 self.get_state(),
                 self.get_play_state(),
                 self.get_now_playing(),
+                self.get_audio_output(),
             )
             subscribe_state_updates = {
                 self.subscribe(self._async_handle_info, ep.INFO),
@@ -160,6 +164,7 @@ class StreamMagicClient:
                 self.subscribe(self._async_handle_play_state, ep.PLAY_STATE),
                 self.subscribe(self._async_handle_position, ep.POSITION),
                 self.subscribe(self._async_handle_now_playing, ep.NOW_PLAYING),
+                self.subscribe(self._async_handle_audio_output, ep.ZONE_AUDIO_OUTPUT),
             }
             subscribe_tasks = set()
             for state_update in subscribe_state_updates:
@@ -295,6 +300,11 @@ class StreamMagicClient:
         data = await self.request(ep.NOW_PLAYING)
         return NowPlaying.from_dict(data["params"]["data"])
 
+    async def get_audio_output(self) -> AudioOutput:
+        """Get audio output information from device."""
+        data = await self.request(ep.ZONE_AUDIO_OUTPUT)
+        return AudioOutput.from_dict(data["params"]["data"])
+
     async def _async_handle_info(self, payload) -> None:
         """Handle async info update."""
         params = payload["params"]
@@ -337,6 +347,13 @@ class StreamMagicClient:
         params = payload["params"]
         if "data" in params:
             self.now_playing = NowPlaying.from_dict(params["data"])
+        await self.do_state_update_callbacks()
+
+    async def _async_handle_audio_output(self, payload) -> None:
+        """Handle async audio output update."""
+        params = payload["params"]
+        if "data" in params:
+            self.audio_output = AudioOutput.from_dict(params["data"])
         await self.do_state_update_callbacks()
 
     async def power_on(self) -> None:
@@ -453,4 +470,10 @@ class StreamMagicClient:
         """Play a radio station from a provided url."""
         await self.request(
             ep.STREAM_RADIO, params={"zone": "ZONE1", "url": url, "name": name}
+        )
+
+    async def set_audio_output(self, output_id: str) -> None:
+        """Set the audio output of the device."""
+        await self.request(
+            ep.ZONE_AUDIO_OUTPUT, params={"zone": "ZONE1", "id": output_id}
         )
