@@ -50,6 +50,9 @@ class State(DataClassORJSONMixin):
         metadata=field_options(alias="volume_percent"), default=None
     )
     mute: bool = field(metadata=field_options(alias="mute"), default=False)
+    audio_output: str = field(
+        metadata=field_options(alias="audio_output"), default=None
+    )
 
 
 @dataclass
@@ -103,6 +106,21 @@ class NowPlaying(DataClassORJSONMixin):
     controls: list[TransportControl] = field(
         metadata=field_options(alias="controls"), default=None
     )
+
+
+@dataclass
+class AudioOutput(DataClassORJSONMixin):
+    """Data class representing StreamMagic audio output."""
+
+    outputs: list[Output] = field(metadata=field_options(alias="outputs"), default=None)
+
+
+@dataclass
+class Output(DataClassORJSONMixin):
+    """Data class representing StreamMagic output."""
+
+    id: str = field(metadata=field_options(alias="id"))
+    name: str = field(metadata=field_options(alias="name"))
 
 
 class TransportControl(StrEnum):

@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "aiostreammagic"
-version = "2.5.0"
+version = "2.6.0"
 description = "An async python package for interfacing with Cambridge Audio / Stream Magic compatible streamers."
 authors = ["Noah Husby <32528627+noahhusby@users.noreply.github.com>"]
 maintainers = ["Noah Husby <32528627+noahhusby@users.noreply.github.com>"]
@@ -12,7 +12,6 @@ documentation = "https://github.com/noahhusby/aiostreammagic"
 
 [tool.poetry.dependencies]
 python = "^3.11"
-aiohttp = ">=3.0.0"
 yarl = ">=1.6.0"
 mashumaro = "^3.11"
 orjson = ">=3.9.0"
