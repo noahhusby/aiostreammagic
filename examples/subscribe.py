@@ -1,6 +1,6 @@
 import asyncio
 
-from aiostreammagic import StreamMagicClient
+from aiostreammagic.stream_magic import StreamMagicClient
 from aiostreammagic.models import CallbackType
 
 HOST = "192.168.20.218"
@@ -14,6 +14,8 @@ async def on_state_change(client: StreamMagicClient, callback_type: CallbackType
     print(f"State: {client.state}")
     print(f"Play State: {client.play_state}")
     print(f"Now Playing: {client.now_playing}")
+    print(f"Display: {client.display}")
+    print(f"Preset List: {client.preset_list}")
 
 
 async def main():

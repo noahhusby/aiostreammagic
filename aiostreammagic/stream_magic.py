@@ -24,6 +24,7 @@ from aiostreammagic.models import (
     Display,
     DisplayBrightness,
     Update,
+    PresetList,
 )
 from . import endpoints as ep
 from .const import _LOGGER
@@ -44,14 +45,15 @@ class StreamMagicClient:
         self.connect_task: Task | None = None
         self.state_update_callbacks: list[Any] = []
         self._allow_state_update = False
-        self.info: Info | None = None
-        self.sources: list[Source] | None = None
-        self.state: State | None = None
-        self.play_state: PlayState | None = None
-        self.now_playing: NowPlaying | None = None
-        self.audio_output: AudioOutput | None = None
-        self.display: Display | None = None
-        self.update: Update | None = None
+        self.info: Optional[Info] = None
+        self.sources: Optional[list[Source]] = None
+        self.state: Optional[State] = None
+        self.play_state: Optional[PlayState] = None
+        self.now_playing: Optional[NowPlaying] = None
+        self.audio_output: Optional[AudioOutput] = None
+        self.display: Optional[Display] = None
+        self.update: Optional[Update] = None
+        self.preset_list: Optional[PresetList] = None
         self._attempt_reconnection = False
         self._reconnect_task: Optional[Task] = None
         self.position_last_updated: datetime = datetime.now()
@@ -156,6 +158,7 @@ class StreamMagicClient:
                 self.audio_output,
                 self.display,
                 self.update,
+                self.preset_list,
             ) = await asyncio.gather(
                 self.get_info(),
                 self.get_sources(),
@@ -165,6 +168,7 @@ class StreamMagicClient:
                 self.get_audio_output(),
                 self.get_display(),
                 self.get_update(),
+                self.get_preset_list(),
             )
             subscribe_state_updates = {
                 self.subscribe(self._async_handle_info, ep.INFO),
@@ -176,6 +180,7 @@ class StreamMagicClient:
                 self.subscribe(self._async_handle_audio_output, ep.ZONE_AUDIO_OUTPUT),
                 self.subscribe(self._async_handle_display, ep.DISPLAY),
                 self.subscribe(self._async_handle_update, ep.UPDATE),
+                self.subscribe(self._async_handle_preset_list, ep.PRESET_LIST),
             }
             subscribe_tasks = set()
             for state_update in subscribe_state_updates:
@@ -326,6 +331,11 @@ class StreamMagicClient:
         data = await self.request(ep.UPDATE)
         return Update.from_dict(data["params"]["data"])
 
+    async def get_preset_list(self) -> PresetList:
+        """Get preset list information from device."""
+        data = await self.request(ep.PRESET_LIST)
+        return PresetList.from_dict(data["params"]["data"])
+
     async def _async_handle_info(self, payload) -> None:
         """Handle async info update."""
         params = payload["params"]
@@ -389,6 +399,13 @@ class StreamMagicClient:
         params = payload["params"]
         if "data" in params:
             self.update = Update.from_dict(params["data"])
+        await self.do_state_update_callbacks()
+
+    async def _async_handle_preset_list(self, payload) -> None:
+        """Handle async preset list update."""
+        params = payload["params"]
+        if "data" in params:
+            self.preset_list = PresetList.from_dict(params["data"])
         await self.do_state_update_callbacks()
 
     async def power_on(self) -> None:

@@ -103,6 +103,35 @@ class PlayStateMetadata(DataClassORJSONMixin):
 
 
 @dataclass
+class PresetList(DataClassORJSONMixin):
+    """Data class representing StreamMagic preset table."""
+
+    start: int = field(metadata=field_options(alias="start"), default=1)
+    end: int = field(metadata=field_options(alias="end"), default=99)
+    max_presets: int = field(metadata=field_options(alias="max_presets"), default=99)
+    presettable: bool = field(
+        metadata=field_options(alias="presettable"), default=False
+    )
+    presets: list[Preset] = field(metadata=field_options(alias="presets"), default=None)
+
+
+@dataclass
+class Preset(DataClassORJSONMixin):
+    """Data class representing StreamMagic preset."""
+
+    preset_id: int = field(metadata=field_options(alias="id"), default=None)
+    name: str = field(metadata=field_options(alias="name"), default=None)
+    type: str = field(metadata=field_options(alias="type"), default=None)
+    preset_class: str = field(metadata=field_options(alias="class"), default=None)
+    state: str = field(metadata=field_options(alias="state"), default=None)
+    is_playing: bool = field(metadata=field_options(alias="is_playing"), default=False)
+    art_url: str = field(metadata=field_options(alias="art_url"), default=None)
+    airable_radio_id: int = field(
+        metadata=field_options(alias="airable_radio_id"), default=None
+    )
+
+
+@dataclass
 class NowPlaying(DataClassORJSONMixin):
     """Data class representing NowPlaying state."""
 
