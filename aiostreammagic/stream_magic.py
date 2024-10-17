@@ -557,3 +557,7 @@ class StreamMagicClient:
         await self.request(
             ep.UPDATE, params={"early_update": early_update, "action": "CHECK"}
         )
+
+    async def recall_preset(self, preset: int) -> None:
+        """Recall a preset for the device."""
+        await self.request(ep.RECALL_PRESET, params={"preset": preset, "zone": "ZONE1"})
