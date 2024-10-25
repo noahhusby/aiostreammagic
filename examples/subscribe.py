@@ -6,7 +6,9 @@ from aiostreammagic.models import CallbackType
 HOST = "192.168.20.218"
 
 
-async def on_state_change(client: StreamMagicClient, callback_type: CallbackType):
+async def on_state_change(
+    client: StreamMagicClient, callback_type: CallbackType
+) -> None:
     """Called when new information is received."""
     print(f"Callback Type: {callback_type} {client.is_connected()}")
     print(f"System info: {client.info}")
@@ -18,7 +20,7 @@ async def on_state_change(client: StreamMagicClient, callback_type: CallbackType
     print(f"Preset List: {client.preset_list}")
 
 
-async def main():
+async def main() -> None:
     """Subscribe demo entrypoint."""
     client = StreamMagicClient("192.168.20.218")
     await client.register_state_update_callbacks(on_state_change)
