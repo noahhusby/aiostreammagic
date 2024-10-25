@@ -5,7 +5,7 @@ from aiostreammagic import StreamMagicClient, Source, Info
 HOST = "192.168.20.218"
 
 
-async def main():
+async def main() -> None:
     """Basic demo entrypoint."""
     client = StreamMagicClient("192.168.20.218")
     await client.connect()

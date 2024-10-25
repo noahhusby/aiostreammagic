@@ -2,7 +2,7 @@
 
 import asyncio
 import json
-from asyncio import AbstractEventLoop, Future, Task
+from asyncio import AbstractEventLoop, Future, Task, Queue
 from datetime import datetime, UTC
 from typing import Any, Optional
 
@@ -35,14 +35,14 @@ VERSION = "1.0.0"
 class StreamMagicClient:
     """Client for handling connections with StreamMagic enabled devices."""
 
-    def __init__(self, host):
+    def __init__(self, host: str) -> None:
         self.host = host
         self.connection: WebSocketClientProtocol | None = None
-        self.futures: dict[str, list[asyncio.Future]] = {}
+        self.futures: dict[str, list[Future[Any]]] = {}
         self._subscriptions: dict[str, Any] = {}
         self._loop: AbstractEventLoop = asyncio.get_running_loop()
-        self.connect_result: Future | None = None
-        self.connect_task: Task | None = None
+        self.connect_result: Future[bool] | None = None
+        self.connect_task: Task[Any] | None = None
         self.state_update_callbacks: list[Any] = []
         self._allow_state_update = False
         self._info: Optional[Info] = None
@@ -55,27 +55,27 @@ class StreamMagicClient:
         self._update: Optional[Update] = None
         self._preset_list: Optional[PresetList] = None
         self._attempt_reconnection = False
-        self._reconnect_task: Optional[Task] = None
+        self._reconnect_task: Optional[Task[Any]] = None
         self.position_last_updated: datetime = datetime.now()
 
-    async def register_state_update_callbacks(self, callback: Any):
+    async def register_state_update_callbacks(self, callback: Any) -> None:
         """Register state update callback."""
         self.state_update_callbacks.append(callback)
         if self._allow_state_update:
             await callback(self, CallbackType.STATE)
 
-    def unregister_state_update_callbacks(self, callback: Any):
+    def unregister_state_update_callbacks(self, callback: Any) -> None:
         """Unregister state update callback."""
         if callback in self.state_update_callbacks:
             self.state_update_callbacks.remove(callback)
 
-    def clear_state_update_callbacks(self):
+    def clear_state_update_callbacks(self) -> None:
         """Clear state update callbacks."""
         self.state_update_callbacks.clear()
 
     async def do_state_update_callbacks(
         self, callback_type: CallbackType = CallbackType.STATE
-    ):
+    ) -> None:
         """Call state update callbacks."""
         if not self.state_update_callbacks:
             return
@@ -86,7 +86,7 @@ class StreamMagicClient:
         if callbacks:
             await asyncio.gather(*callbacks)
 
-    async def connect(self):
+    async def connect(self) -> Any:
         """Connect to StreamMagic enabled devices."""
         if not self.is_connected():
             self.connect_result = self._loop.create_future()
@@ -95,7 +95,7 @@ class StreamMagicClient:
             )
         return await self.connect_result
 
-    async def disconnect(self):
+    async def disconnect(self) -> None:
         """Disconnect from StreamMagic enabled devices."""
         if self.is_connected():
             self._attempt_reconnection = False
@@ -110,14 +110,14 @@ class StreamMagicClient:
         """Return True if device is connected."""
         return self.connect_task is not None and not self.connect_task.done()
 
-    async def _ws_connect(self, uri):
+    async def _ws_connect(self, uri: str) -> WebSocketClientProtocol:
         """Establish a connection with a WebSocket."""
         return await ws_connect(
             uri,
             extra_headers={"Origin": f"ws://{self.host}", "Host": f"{self.host}:80"},
         )
 
-    async def _reconnect_handler(self, res):
+    async def _reconnect_handler(self, res: Future[bool]) -> None:
         reconnect_delay = 0.5
         while True:
             try:
@@ -138,7 +138,7 @@ class StreamMagicClient:
             )
             await asyncio.sleep(reconnect_delay)
 
-    async def _connect_handler(self, res):
+    async def _connect_handler(self, res: Future[bool]) -> None:
         """Handle connection for StreamMagic."""
         try:
             self.futures = {}
@@ -199,7 +199,7 @@ class StreamMagicClient:
             _LOGGER.error(ex, exc_info=True)
 
     @staticmethod
-    async def subscription_handler(queue, callback):
+    async def subscription_handler(queue: Queue, callback) -> None:
         """Handle subscriptions."""
         try:
             while True:
@@ -213,7 +213,7 @@ class StreamMagicClient:
         ws: WebSocketClientProtocol,
         subscriptions: dict[str, list[Any]],
         futures: dict[str, list[asyncio.Future]],
-    ):
+    ) -> None:
         """Callback consumer handler."""
         subscription_queues = {}
         subscription_tasks = {}
@@ -245,7 +245,9 @@ class StreamMagicClient:
         ):
             pass
 
-    async def _send(self, path, params=None):
+    async def _send(
+        self, path: str, params: Optional[dict[str, str | int | float | bool]] = None
+    ) -> None:
         """Send a command to the device."""
         message = {
             "path": path,
@@ -258,7 +260,9 @@ class StreamMagicClient:
         _LOGGER.debug("Sending command: %s", message)
         await self.connection.send(json.dumps(message))
 
-    async def request(self, path: str, params=None) -> Any:
+    async def request(
+        self, path: str, params: Optional[dict[str, str | int | float | bool]] = None
+    ) -> Any:
         res = self._loop.create_future()
         path_futures = self.futures.get(path, [])
         path_futures.append(res)
@@ -392,28 +396,28 @@ class StreamMagicClient:
         data = await self.request(ep.PRESET_LIST)
         return PresetList.from_dict(data["params"]["data"])
 
-    async def _async_handle_info(self, payload) -> None:
+    async def _async_handle_info(self, payload: dict[str, Any]) -> None:
         """Handle async info update."""
         params = payload["params"]
         if "data" in params:
             self._info = Info.from_dict(params["data"])
         await self.do_state_update_callbacks()
 
-    async def _async_handle_sources(self, payload) -> None:
+    async def _async_handle_sources(self, payload: dict[str, Any]) -> None:
         """Handle async sources update."""
         params = payload["params"]
         if "data" in params:
             self.sources = [Source.from_dict(x) for x in params["data"]["sources"]]
         await self.do_state_update_callbacks()
 
-    async def _async_handle_zone_state(self, payload) -> None:
+    async def _async_handle_zone_state(self, payload: dict[str, Any]) -> None:
         """Handle async zone state update."""
         params = payload["params"]
         if "data" in params:
             self._state = State.from_dict(params["data"])
         await self.do_state_update_callbacks()
 
-    async def _async_handle_play_state(self, payload) -> None:
+    async def _async_handle_play_state(self, payload: dict[str, Any]) -> None:
         """Handle async zone state update."""
         params = payload["params"]
         if "data" in params:
@@ -421,7 +425,7 @@ class StreamMagicClient:
             self.position_last_updated = datetime.now()
         await self.do_state_update_callbacks()
 
-    async def _async_handle_position(self, payload) -> None:
+    async def _async_handle_position(self, payload: dict[str, Any]) -> None:
         """Handle async position update."""
         params = payload["params"]
         if "data" in params and params["data"]["position"] and self.play_state:
@@ -429,35 +433,35 @@ class StreamMagicClient:
             self.position_last_updated = datetime.now(UTC)
         await self.do_state_update_callbacks()
 
-    async def _async_handle_now_playing(self, payload) -> None:
+    async def _async_handle_now_playing(self, payload: dict[str, Any]) -> None:
         """Handle async now playing update."""
         params = payload["params"]
         if "data" in params:
             self._now_playing = NowPlaying.from_dict(params["data"])
         await self.do_state_update_callbacks()
 
-    async def _async_handle_audio_output(self, payload) -> None:
+    async def _async_handle_audio_output(self, payload: dict[str, Any]) -> None:
         """Handle async audio output update."""
         params = payload["params"]
         if "data" in params:
             self._audio_output = AudioOutput.from_dict(params["data"])
         await self.do_state_update_callbacks()
 
-    async def _async_handle_display(self, payload) -> None:
+    async def _async_handle_display(self, payload: dict[str, Any]) -> None:
         """Handle async display update."""
         params = payload["params"]
         if "data" in params:
             self._display = Display.from_dict(params["data"])
         await self.do_state_update_callbacks()
 
-    async def _async_handle_update(self, payload) -> None:
+    async def _async_handle_update(self, payload: dict[str, Any]) -> None:
         """Handle async display update."""
         params = payload["params"]
         if "data" in params:
             self._update = Update.from_dict(params["data"])
         await self.do_state_update_callbacks()
 
-    async def _async_handle_preset_list(self, payload) -> None:
+    async def _async_handle_preset_list(self, payload: dict[str, Any]) -> None:
         """Handle async preset list update."""
         params = payload["params"]
         if "data" in params:
@@ -549,14 +553,14 @@ class StreamMagicClient:
             ep.PLAY_CONTROL, params={"match": "none", "zone": "ZONE1", "action": "stop"}
         )
 
-    async def set_shuffle(self, shuffle: ShuffleMode):
+    async def set_shuffle(self, shuffle: ShuffleMode) -> None:
         """Set the shuffle of the device."""
         await self.request(
             ep.PLAY_CONTROL,
             params={"match": "none", "zone": "ZONE1", "mode_shuffle": shuffle},
         )
 
-    async def set_repeat(self, repeat: RepeatMode):
+    async def set_repeat(self, repeat: RepeatMode) -> None:
         """Set the repeat of the device."""
         await self.request(
             ep.PLAY_CONTROL,
