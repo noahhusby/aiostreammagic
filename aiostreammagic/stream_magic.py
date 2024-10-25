@@ -45,15 +45,15 @@ class StreamMagicClient:
         self.connect_task: Task | None = None
         self.state_update_callbacks: list[Any] = []
         self._allow_state_update = False
-        self.info: Optional[Info] = None
-        self.sources: Optional[list[Source]] = None
-        self.state: Optional[State] = None
-        self.play_state: Optional[PlayState] = None
-        self.now_playing: Optional[NowPlaying] = None
-        self.audio_output: Optional[AudioOutput] = None
-        self.display: Optional[Display] = None
-        self.update: Optional[Update] = None
-        self.preset_list: Optional[PresetList] = None
+        self._info: Optional[Info] = None
+        self.sources: list[Source] = []
+        self._state: Optional[State] = None
+        self._play_state: Optional[PlayState] = None
+        self._now_playing: Optional[NowPlaying] = None
+        self._audio_output: Optional[AudioOutput] = None
+        self._display: Optional[Display] = None
+        self._update: Optional[Update] = None
+        self._preset_list: Optional[PresetList] = None
         self._attempt_reconnection = False
         self._reconnect_task: Optional[Task] = None
         self.position_last_updated: datetime = datetime.now()
@@ -150,15 +150,15 @@ class StreamMagicClient:
                 self.consumer_handler(ws, self._subscriptions, self.futures)
             )
             (
-                self.info,
+                self._info,
                 self.sources,
-                self.state,
-                self.play_state,
-                self.now_playing,
-                self.audio_output,
-                self.display,
-                self.update,
-                self.preset_list,
+                self._state,
+                self._play_state,
+                self._now_playing,
+                self._audio_output,
+                self._display,
+                self._update,
+                self._preset_list,
             ) = await asyncio.gather(
                 self.get_info(),
                 self.get_sources(),
@@ -290,6 +290,62 @@ class StreamMagicClient:
             del self._subscriptions[path]
             raise
 
+    @property
+    def info(self) -> Info:
+        """Return a type-guaranteed instance of Info"""
+        if not self._info:
+            raise StreamMagicError("Info not available.")
+        return self._info
+
+    @property
+    def state(self) -> State:
+        """Return a type-guaranteed instance of State"""
+        if not self._state:
+            raise StreamMagicError("State not available.")
+        return self._state
+
+    @property
+    def play_state(self) -> PlayState:
+        """Return a type-guaranteed instance of PlayState"""
+        if not self._play_state:
+            raise StreamMagicError("Play state not available.")
+        return self._play_state
+
+    @property
+    def now_playing(self) -> NowPlaying:
+        """Return a type-guaranteed instance of NowPlaying"""
+        if not self._now_playing:
+            raise StreamMagicError("NowPlaying not available.")
+        return self._now_playing
+
+    @property
+    def audio_output(self) -> AudioOutput:
+        """Return a type-guaranteed instance of AudioOutput"""
+        if not self._audio_output:
+            raise StreamMagicError("AudioOutput not available.")
+        return self._audio_output
+
+    @property
+    def display(self) -> Display:
+        """Return a type-guaranteed instance of Display"""
+        if not self._display:
+            raise StreamMagicError("Display not available.")
+        return self._display
+
+    @property
+    def update(self) -> Update:
+        """Return a type-guaranteed instance of Update"""
+        if not self._update:
+            raise StreamMagicError("Update not available.")
+        return self._update
+
+    @property
+    def preset_list(self) -> PresetList:
+        """Return a type-guaranteed instance of PresetList"""
+        if not self._preset_list:
+            raise StreamMagicError("PresetList not available.")
+        return self._preset_list
+
     async def get_info(self) -> Info:
         """Get device information from device."""
         data = await self.request(ep.INFO)
@@ -340,7 +396,7 @@ class StreamMagicClient:
         """Handle async info update."""
         params = payload["params"]
         if "data" in params:
-            self.info = Info.from_dict(params["data"])
+            self._info = Info.from_dict(params["data"])
         await self.do_state_update_callbacks()
 
     async def _async_handle_sources(self, payload) -> None:
@@ -354,14 +410,14 @@ class StreamMagicClient:
         """Handle async zone state update."""
         params = payload["params"]
         if "data" in params:
-            self.state = State.from_dict(params["data"])
+            self._state = State.from_dict(params["data"])
         await self.do_state_update_callbacks()
 
     async def _async_handle_play_state(self, payload) -> None:
         """Handle async zone state update."""
         params = payload["params"]
         if "data" in params:
-            self.play_state = PlayState.from_dict(params["data"])
+            self._play_state = PlayState.from_dict(params["data"])
             self.position_last_updated = datetime.now()
         await self.do_state_update_callbacks()
 
@@ -377,35 +433,35 @@ class StreamMagicClient:
         """Handle async now playing update."""
         params = payload["params"]
         if "data" in params:
-            self.now_playing = NowPlaying.from_dict(params["data"])
+            self._now_playing = NowPlaying.from_dict(params["data"])
         await self.do_state_update_callbacks()
 
     async def _async_handle_audio_output(self, payload) -> None:
         """Handle async audio output update."""
         params = payload["params"]
         if "data" in params:
-            self.audio_output = AudioOutput.from_dict(params["data"])
+            self._audio_output = AudioOutput.from_dict(params["data"])
         await self.do_state_update_callbacks()
 
     async def _async_handle_display(self, payload) -> None:
         """Handle async display update."""
         params = payload["params"]
         if "data" in params:
-            self.display = Display.from_dict(params["data"])
+            self._display = Display.from_dict(params["data"])
         await self.do_state_update_callbacks()
 
     async def _async_handle_update(self, payload) -> None:
         """Handle async display update."""
         params = payload["params"]
         if "data" in params:
-            self.update = Update.from_dict(params["data"])
+            self._update = Update.from_dict(params["data"])
         await self.do_state_update_callbacks()
 
     async def _async_handle_preset_list(self, payload) -> None:
         """Handle async preset list update."""
         params = payload["params"]
         if "data" in params:
-            self.preset_list = PresetList.from_dict(params["data"])
+            self._preset_list = PresetList.from_dict(params["data"])
         await self.do_state_update_callbacks()
 
     async def power_on(self) -> None:

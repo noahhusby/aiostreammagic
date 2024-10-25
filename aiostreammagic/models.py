@@ -33,7 +33,7 @@ class Source(DataClassORJSONMixin):
     ui_selectable: bool = field(metadata=field_options(alias="ui_selectable"))
     description: str = field(metadata=field_options(alias="description"))
     description_locale: str = field(metadata=field_options(alias="description_locale"))
-    preferred_order: int = field(metadata=field_options(alias="preferred_order"))
+    preferred_order: int = field(metadata=field_options(alias="preferred_order"), default=None)
 
 
 @dataclass
