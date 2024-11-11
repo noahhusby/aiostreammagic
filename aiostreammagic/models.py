@@ -53,6 +53,7 @@ class DisplayBrightness(StrEnum):
     BRIGHT = "bright"
     DIM = "dim"
     OFF = "off"
+    NONE = "none"
 
 
 class ControlBusMode(StrEnum):
