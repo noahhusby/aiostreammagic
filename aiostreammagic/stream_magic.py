@@ -6,8 +6,7 @@ from asyncio import AbstractEventLoop, Future, Task, Queue
 from datetime import datetime, UTC
 from typing import Any, Optional
 
-from websockets import ConnectionClosedError, ConnectionClosedOK
-from websockets.asyncio.client import connect, ClientConnection
+from aiohttp import ClientWebSocketResponse, ClientSession
 
 from aiostreammagic.exceptions import StreamMagicError
 from aiostreammagic.models import (
@@ -34,9 +33,10 @@ VERSION = "1.0.0"
 class StreamMagicClient:
     """Client for handling connections with StreamMagic enabled devices."""
 
-    def __init__(self, host: str) -> None:
+    def __init__(self, host: str, session: ClientSession | None = None) -> None:
         self.host = host
-        self.connection: ClientConnection | None = None
+        self.session: Optional[ClientSession] = session
+        self.connection: ClientWebSocketResponse | None = None
         self.futures: dict[str, list[Future[Any]]] = {}
         self._subscriptions: dict[str, Any] = {}
         self._loop: AbstractEventLoop = asyncio.get_running_loop()
@@ -109,11 +109,11 @@ class StreamMagicClient:
         """Return True if device is connected."""
         return self.connect_task is not None and not self.connect_task.done()
 
-    async def _ws_connect(self, uri: str) -> ClientConnection:
+    async def _ws_connect(self, uri: str) -> ClientWebSocketResponse:
         """Establish a connection with a WebSocket."""
-        return await connect(
+        return await self.session.ws_connect(
             uri,
-            additional_headers={
+            headers={
                 "Origin": f"ws://{self.host}",
                 "Host": f"{self.host}:80",
             },
@@ -143,6 +143,8 @@ class StreamMagicClient:
     async def _connect_handler(self, res: Future[bool]) -> None:
         """Handle connection for StreamMagic."""
         try:
+            if not self.session:
+                self.session = ClientSession()
             self.futures = {}
             self._allow_state_update = False
             uri = f"ws://{self.host}/smoip"
@@ -212,7 +214,7 @@ class StreamMagicClient:
 
     async def consumer_handler(
         self,
-        ws: ClientConnection,
+        ws: ClientWebSocketResponse,
         subscriptions: dict[str, list[Any]],
         futures: dict[str, list[asyncio.Future]],
     ) -> None:
@@ -223,7 +225,7 @@ class StreamMagicClient:
             async for raw_msg in ws:
                 if futures or subscriptions:
                     _LOGGER.debug("recv(%s): %s", self.host, raw_msg)
-                    msg = json.loads(raw_msg)
+                    msg = json.loads(raw_msg.data)
                     path = msg["path"]
                     path_futures = self.futures.get(path)
                     subscription = self._subscriptions.get(path)
@@ -240,11 +242,7 @@ class StreamMagicClient:
                             )
                         subscription_queues[path].put_nowait(msg)
 
-        except (
-            asyncio.CancelledError,
-            ConnectionClosedError,
-            ConnectionClosedOK,
-        ):
+        except (asyncio.CancelledError,):
             pass
 
     async def _send(
@@ -260,7 +258,7 @@ class StreamMagicClient:
             raise StreamMagicError("Not connected to device.")
 
         _LOGGER.debug("Sending command: %s", message)
-        await self.connection.send(json.dumps(message))
+        await self.connection.send_str(json.dumps(message))
 
     async def request(
         self, path: str, params: Optional[dict[str, str | int | float | bool]] = None
