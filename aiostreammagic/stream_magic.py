@@ -6,9 +6,8 @@ from asyncio import AbstractEventLoop, Future, Task, Queue
 from datetime import datetime, UTC
 from typing import Any, Optional
 
-import websockets
-from websockets import WebSocketClientProtocol
-from websockets.client import connect as ws_connect
+from websockets import ConnectionClosedError, ConnectionClosedOK
+from websockets.asyncio.client import connect, ClientConnection
 
 from aiostreammagic.exceptions import StreamMagicError
 from aiostreammagic.models import (
@@ -37,7 +36,7 @@ class StreamMagicClient:
 
     def __init__(self, host: str) -> None:
         self.host = host
-        self.connection: WebSocketClientProtocol | None = None
+        self.connection: ClientConnection | None = None
         self.futures: dict[str, list[Future[Any]]] = {}
         self._subscriptions: dict[str, Any] = {}
         self._loop: AbstractEventLoop = asyncio.get_running_loop()
@@ -110,11 +109,14 @@ class StreamMagicClient:
         """Return True if device is connected."""
         return self.connect_task is not None and not self.connect_task.done()
 
-    async def _ws_connect(self, uri: str) -> WebSocketClientProtocol:
+    async def _ws_connect(self, uri: str) -> ClientConnection:
         """Establish a connection with a WebSocket."""
-        return await ws_connect(
+        return await connect(
             uri,
-            extra_headers={"Origin": f"ws://{self.host}", "Host": f"{self.host}:80"},
+            additional_headers={
+                "Origin": f"ws://{self.host}",
+                "Host": f"{self.host}:80",
+            },
         )
 
     async def _reconnect_handler(self, res: Future[bool]) -> None:
@@ -210,7 +212,7 @@ class StreamMagicClient:
 
     async def consumer_handler(
         self,
-        ws: WebSocketClientProtocol,
+        ws: ClientConnection,
         subscriptions: dict[str, list[Any]],
         futures: dict[str, list[asyncio.Future]],
     ) -> None:
@@ -240,8 +242,8 @@ class StreamMagicClient:
 
         except (
             asyncio.CancelledError,
-            websockets.exceptions.ConnectionClosedError,
-            websockets.exceptions.ConnectionClosedOK,
+            ConnectionClosedError,
+            ConnectionClosedOK,
         ):
             pass
 
