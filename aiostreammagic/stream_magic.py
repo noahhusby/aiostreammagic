@@ -24,6 +24,7 @@ from aiostreammagic.models import (
     Update,
     PresetList,
     ControlBusMode,
+    StandbyMode,
 )
 from . import endpoints as ep
 from .const import _LOGGER
@@ -626,3 +627,7 @@ class StreamMagicClient:
     async def set_control_bus_mode(self, control_bus: ControlBusMode) -> None:
         """Set the control bus mode."""
         await self.request(ep.ZONE_STATE, params={"cbus": control_bus})
+
+    async def set_standby_mode(self, standby_mode: StandbyMode) -> None:
+        """Set the standby mode."""
+        await self.request(ep.ZONE_STATE, params={"standby_mode": standby_mode})
