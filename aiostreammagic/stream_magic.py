@@ -23,6 +23,7 @@ from aiostreammagic.models import (
     DisplayBrightness,
     Update,
     PresetList,
+    ControlBusMode,
 )
 from . import endpoints as ep
 from .const import _LOGGER
@@ -621,3 +622,7 @@ class StreamMagicClient:
     async def recall_preset(self, preset: int) -> None:
         """Recall a preset for the device."""
         await self.request(ep.RECALL_PRESET, params={"preset": preset, "zone": "ZONE1"})
+
+    async def set_control_bus_mode(self, control_bus: ControlBusMode) -> None:
+        """Set the control bus mode."""
+        await self.request(ep.ZONE_STATE, params={"cbus": control_bus})
