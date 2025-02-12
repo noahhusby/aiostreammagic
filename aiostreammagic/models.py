@@ -126,6 +126,9 @@ class State(DataClassORJSONMixin):
     standby_mode: StandbyMode = field(
         metadata=field_options(alias="standby_mode"), default=StandbyMode.NETWORK
     )
+    auto_power_down_time: int = field(
+        metadata=field_options(alias="auto_power_down"), default=1200
+    )
 
 
 @dataclass

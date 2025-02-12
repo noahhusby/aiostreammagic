@@ -631,3 +631,7 @@ class StreamMagicClient:
     async def set_standby_mode(self, standby_mode: StandbyMode) -> None:
         """Set the standby mode."""
         await self.request(ep.ZONE_STATE, params={"standby_mode": standby_mode})
+
+    async def set_auto_power_down(self, auto_power_down_time_seconds: int) -> None:
+        """Set the automatic power down time."""
+        await self.request(ep.POWER, params={"auto_power_down": auto_power_down_time_seconds})
