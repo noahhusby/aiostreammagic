@@ -621,15 +621,3 @@ class StreamMagicClient:
     async def recall_preset(self, preset: int) -> None:
         """Recall a preset for the device."""
         await self.request(ep.RECALL_PRESET, params={"preset": preset, "zone": "ZONE1"})
-
-    async def set_control_bus_mode(self, control_bus: ControlBusMode) -> None:
-        """Set the control bus mode."""
-        await self.request(ep.ZONE_STATE, params={"cbus": control_bus})
-
-    async def set_standby_mode(self, standby_mode: StandbyMode) -> None:
-        """Set the standby mode."""
-        await self.request(ep.ZONE_STATE, params={"standby_mode": standby_mode})
-
-    async def set_auto_power_down(self, auto_power_down_time_seconds: int) -> None:
-        """Set the automatic power down time."""
-        await self.request(ep.POWER, params={"auto_power_down": auto_power_down_time_seconds})

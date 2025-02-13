@@ -63,12 +63,6 @@ class ControlBusMode(StrEnum):
     RECEIVER = "receiver"
     OFF = "off"
 
-class StandbyMode(StrEnum):
-    """Standby mode"""
-
-    ECO = "ECO_MODE"
-    NETWORK = "NETWORK"
-
 
 @dataclass
 class Info(DataClassORJSONMixin):
@@ -122,12 +116,6 @@ class State(DataClassORJSONMixin):
     )
     control_bus: ControlBusMode = field(
         metadata=field_options(alias="cbus"), default=ControlBusMode.OFF
-    )
-    standby_mode: StandbyMode = field(
-        metadata=field_options(alias="standby_mode"), default=StandbyMode.NETWORK
-    )
-    auto_power_down_time: int = field(
-        metadata=field_options(alias="auto_power_down"), default=1200
     )
 
 
