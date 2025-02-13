@@ -108,7 +108,7 @@ class State(DataClassORJSONMixin):
     pre_amp_mode: bool = field(metadata=field_options(alias="pre_amp_mode"))
     pre_amp_state: bool = field(metadata=field_options(alias="pre_amp_state"))
     volume_step: Optional[int] = field(
-        metadata=field_options(alias="volume_step"), default=None
+        metadata=field_options(alias="volume_step"), default=1
     )
     volume_db: Optional[int] = field(
         metadata=field_options(alias="volume_db"), default=None
