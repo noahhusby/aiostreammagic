@@ -635,3 +635,7 @@ class StreamMagicClient:
     async def set_auto_power_down(self, auto_power_down_time_seconds: int) -> None:
         """Set the automatic power down time."""
         await self.request(ep.POWER, params={"auto_power_down": auto_power_down_time_seconds})
+
+    async def set_volume_step(self, step_size: int) -> None:
+        """Set the step by which volume is increased or lowered"""
+        self.state.volume_step = step_size
