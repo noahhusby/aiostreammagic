@@ -479,15 +479,15 @@ class StreamMagicClient:
         await self.request(ep.POWER, params={"power": "NETWORK"})
 
     async def volume_up(self) -> None:
-        """Increase the volume of the device by 1."""
+        """Increase the volume of the device by the configured step size: volume_step."""
         await self.request(
-            ep.ZONE_STATE, params={"zone": "ZONE1", "volume_step_change": 1}
+            ep.ZONE_STATE, params={"zone": "ZONE1", "volume_step_change": self.state.volume_step}
         )
 
     async def volume_down(self) -> None:
-        """Increase the volume of the device by -1."""
+        """Increase the volume of the device by the configured step size: volume_step."""
         await self.request(
-            ep.ZONE_STATE, params={"zone": "ZONE1", "volume_step_change": -1}
+            ep.ZONE_STATE, params={"zone": "ZONE1", "volume_step_change": -1 * self.state.volume_step}
         )
 
     async def set_volume(self, volume: int) -> None:
@@ -635,3 +635,7 @@ class StreamMagicClient:
     async def set_auto_power_down(self, auto_power_down_time_seconds: int) -> None:
         """Set the automatic power down time."""
         await self.request(ep.POWER, params={"auto_power_down": auto_power_down_time_seconds})
+
+    async def set_volume_step(self, step_size: int) -> None:
+        """Set the step by which volume is increased or lowered"""
+        self.state.volume_step = step_size
