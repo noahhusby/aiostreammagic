@@ -15,9 +15,11 @@
 </div>
 
 # About
+
 This module implements a Python client for the Stream Magic API used to control Cambridge Audio streamers. The API connects over websockets and supports several streamers, receivers, and pre-amps.
 
 ## Supported Devices
+
 - Cambridge Audio Evo 75
 - Cambridge Audio Evo 150
 - Cambridge Audio CXN
@@ -26,10 +28,12 @@ This module implements a Python client for the Stream Magic API used to control 
 - Cambridge Audio CXR200
 - Cambridge Audio 851N
 - Cambridge Audio Edge NQ
+- Cambridge Audio AXN10
 
 If your model is not on the list of supported devices, and everything works correctly then add it to the list by opening a pull request.
 
 # Installation
+
 ```shell
 pip install aiostreammagic
 ```
@@ -37,6 +41,7 @@ pip install aiostreammagic
 # Examples
 
 ## Basic Example
+
 ```python
 import asyncio
 
