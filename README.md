@@ -108,7 +108,7 @@ if __name__ == '__main__':
 [docs]: https://noahhusby.github.io/aiostreammagic/
 [downloads-shield]: https://img.shields.io/pypi/dm/aiostreammagic
 [python-versions-shield]: https://img.shields.io/pypi/pyversions/aiostreammagic
-[maintenance-shield]: https://img.shields.io/maintenance/yes/2024.svg
+[maintenance-shield]: https://img.shields.io/maintenance/yes/2025.svg
 [releases-shield]: https://img.shields.io/github/release/noahhusby/aiostreammagic.svg
 [releases]: https://github.com/noahhusby/aiostreammagic/releases
 [pypi]: https://pypi.org/project/aiostreammagic/
