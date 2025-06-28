@@ -596,6 +596,29 @@ class StreamMagicClient:
         """Sets whether the internal pre-amp is enabled."""
         await self.request(ep.ZONE_STATE, params={"pre_amp_mode": enabled})
 
+    async def set_equalizer_mode(self, enabled: bool) -> None:
+        """Sets whether the internal equalizer is enabled."""
+        await self.request(ep.AUDIO, params={"zone": "ZONE1", "user_eq": enabled})
+
+    async def set_equalizer(self, gains: list[float]) -> None:
+        """Sets the internal equalizer to the provided 7-band gain settings."""
+        if (
+            not isinstance(gains, list)
+            or len(gains) != 7
+            or not all(isinstance(g, (float, int)) for g in gains)
+        ):
+            raise StreamMagicError("gains must be a list of 7 floats")
+
+        # Create the string in the required format
+        gains_str = "|".join(f"{i},,,{g:.1f}," for i, g in enumerate(gains))
+
+        # Encode ',' and '|' to their URL-safe representations to avoid issues in HTTP parameters
+        gains_str = gains_str.replace(",", "%2C").replace("|", "%7C")
+
+        await self.request(
+            ep.AUDIO, params={"zone": "ZONE1", "user_eq_bands": gains_str}
+        )
+
     async def set_volume_limit(self, volume_limit_percent: int) -> None:
         """Sets the volume limit for the internal pre-amp. Value must be between 0 and 100."""
         if not 0 <= volume_limit_percent <= 100:
@@ -634,4 +657,6 @@ class StreamMagicClient:
 
     async def set_auto_power_down(self, auto_power_down_time_seconds: int) -> None:
         """Set the automatic power down time."""
-        await self.request(ep.POWER, params={"auto_power_down": auto_power_down_time_seconds})
+        await self.request(
+            ep.POWER, params={"auto_power_down": auto_power_down_time_seconds}
+        )
