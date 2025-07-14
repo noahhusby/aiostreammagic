@@ -21,7 +21,7 @@ aiohttp = "^3.11.7"
 mypy = "1.16.1"
 pytest = "8.4.1"
 pytest-asyncio = "1.0.0"
-ruff = "0.12.2"
+ruff = "0.12.3"
 
 [tool.mypy]
 # Specify the target platform details in config, so your developers are
