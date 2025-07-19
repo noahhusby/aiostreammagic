@@ -30,8 +30,7 @@ from aiostreammagic.models import (
 )
 from . import endpoints as ep
 from .const import _LOGGER
-
-VERSION = "1.0.0"
+from packaging.version import Version
 
 
 class StreamMagicClient:
@@ -637,9 +636,16 @@ class StreamMagicClient:
         """Sets the volume limit for the internal pre-amp. Value must be between 0 and 100."""
         if not 0 <= volume_limit_percent <= 100:
             raise StreamMagicError("Volume limit must be between 0 and 100")
-        await self.request(
-            ep.ZONE_STATE, params={"volume_limit_percent": volume_limit_percent}
-        )
+        if not self._info or not hasattr(self._info, "api_version"):
+            raise StreamMagicError("Device info or API version not available.")
+        if Version(self._info.api_version) < Version("1.9"):
+            await self.request(
+                ep.ZONE_STATE, params={"volume_limit_percent": volume_limit_percent}
+            )
+        else:
+            await self.request(
+                ep.AUDIO, params={"volume_limit_percent": volume_limit_percent}
+            )
 
     async def set_device_name(self, device_name: str) -> None:
         """Set the device name."""
