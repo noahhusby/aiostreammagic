@@ -4,7 +4,7 @@ import asyncio
 import json
 from asyncio import AbstractEventLoop, Future, Task, Queue
 from datetime import datetime, UTC
-from typing import Any, Optional
+from typing import Any, Optional, Callable, Awaitable
 
 from aiohttp import ClientWebSocketResponse, ClientSession
 
@@ -58,6 +58,7 @@ class StreamMagicClient:
         self._attempt_reconnection = False
         self._reconnect_task: Optional[Task[Any]] = None
         self.position_last_updated: datetime = datetime.now()
+        self._subscription_tasks: dict[str, asyncio.Task[Any]] = {}
 
     async def register_state_update_callbacks(self, callback: Any) -> None:
         """Register state update callback."""
@@ -94,18 +95,29 @@ class StreamMagicClient:
             self._reconnect_task = asyncio.create_task(
                 self._reconnect_handler(self.connect_result)
             )
-        return await self.connect_result
+            return await self.connect_result
+        # Already connected, just return True
+        return True
 
     async def disconnect(self) -> None:
         """Disconnect from StreamMagic enabled devices."""
         if self.is_connected():
             self._attempt_reconnection = False
-            self.connect_task.cancel()
-            try:
-                await self.connect_task
-            except asyncio.CancelledError:
-                pass
+            if self.connect_task is not None:
+                self.connect_task.cancel()
+                try:
+                    await self.connect_task
+                except asyncio.CancelledError:
+                    pass
             await self.do_state_update_callbacks(CallbackType.CONNECTION)
+        # Cancel all subscription handler tasks
+        for task in self._subscription_tasks.values():
+            task.cancel()
+        await asyncio.gather(*self._subscription_tasks.values(), return_exceptions=True)
+        self._subscription_tasks.clear()
+        # Properly close the aiohttp session if it was created by this client
+        if self.session is not None and not self.session.closed:
+            await self.session.close()
 
     def is_connected(self) -> bool:
         """Return True if device is connected."""
@@ -113,6 +125,8 @@ class StreamMagicClient:
 
     async def _ws_connect(self, uri: str) -> ClientWebSocketResponse:
         """Establish a connection with a WebSocket."""
+        if self.session is None:
+            self.session = ClientSession()
         return await self.session.ws_connect(
             uri,
             headers={
@@ -155,6 +169,8 @@ class StreamMagicClient:
             x = asyncio.create_task(
                 self.consumer_handler(ws, self._subscriptions, self.futures)
             )
+            # mypy/typeshed bug: https://github.com/python/mypy/issues/17030
+            # The following ignore is safe because we know the return types.
             (
                 self._info,
                 self.sources,
@@ -165,7 +181,7 @@ class StreamMagicClient:
                 self._display,
                 self._update,
                 self._preset_list,
-            ) = await asyncio.gather(
+            ) = await asyncio.gather(  # type: ignore[assignment]
                 self.get_info(),
                 self.get_sources(),
                 self.get_state(),
@@ -205,7 +221,10 @@ class StreamMagicClient:
             _LOGGER.error(ex, exc_info=True)
 
     @staticmethod
-    async def subscription_handler(queue: Queue, callback) -> None:
+    async def subscription_handler(
+        queue: Queue[dict[str, Any]],
+        callback: Callable[[dict[str, Any]], Awaitable[None]],
+    ) -> None:
         """Handle subscriptions."""
         try:
             while True:
@@ -218,11 +237,10 @@ class StreamMagicClient:
         self,
         ws: ClientWebSocketResponse,
         subscriptions: dict[str, list[Any]],
-        futures: dict[str, list[asyncio.Future]],
+        futures: dict[str, list[asyncio.Future[Any]]],
     ) -> None:
         """Callback consumer handler."""
         subscription_queues = {}
-        subscription_tasks = {}
         try:
             async for raw_msg in ws:
                 if futures or subscriptions:
@@ -236,14 +254,13 @@ class StreamMagicClient:
                             if not future.done():
                                 future.set_result(msg)
                     if subscription:
-                        if path not in subscription_tasks:
-                            queue = asyncio.Queue()
+                        if path not in self._subscription_tasks:
+                            queue: Queue[dict[str, Any]] = asyncio.Queue()
                             subscription_queues[path] = queue
-                            subscription_tasks[path] = asyncio.create_task(
+                            self._subscription_tasks[path] = asyncio.create_task(
                                 self.subscription_handler(queue, subscription)
                             )
                         subscription_queues[path].put_nowait(msg)
-
         except (asyncio.CancelledError,):
             pass
 
@@ -634,4 +651,6 @@ class StreamMagicClient:
 
     async def set_auto_power_down(self, auto_power_down_time_seconds: int) -> None:
         """Set the automatic power down time."""
-        await self.request(ep.POWER, params={"auto_power_down": auto_power_down_time_seconds})
+        await self.request(
+            ep.POWER, params={"auto_power_down": auto_power_down_time_seconds}
+        )

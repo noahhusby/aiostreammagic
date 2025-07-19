@@ -23,7 +23,8 @@ This module implements a Python client for the Stream Magic API used to control 
 - Cambridge Audio Evo 75
 - Cambridge Audio Evo 150
 - Cambridge Audio CXN
-- Cambridge Audio CXN (v2)
+- Cambridge Audio CXN V2
+- Cambridge Audio CXN100
 - Cambridge Audio CXR120
 - Cambridge Audio CXR200
 - Cambridge Audio 851N
@@ -52,7 +53,7 @@ HOST = "192.168.20.218"
 
 async def main():
     """Basic demo entrypoint."""
-    client = StreamMagicClient("192.168.20.218")
+    client = StreamMagicClient(HOST)
     await client.connect()
 
     info: Info = await client.get_info()
@@ -90,7 +91,7 @@ async def on_state_change(client: StreamMagicClient):
 
 async def main():
     """Subscribe demo entrypoint."""
-    client = StreamMagicClient("192.168.20.218")
+    client = StreamMagicClient(HOST)
     await client.register_state_update_callbacks(on_state_change)
     await client.connect()
 
