@@ -25,6 +25,8 @@ from aiostreammagic.models import (
     PresetList,
     ControlBusMode,
     StandbyMode,
+    Audio,
+    UserEQ,
 )
 from . import endpoints as ep
 from .const import _LOGGER
@@ -51,6 +53,7 @@ class StreamMagicClient:
         self._state: Optional[State] = None
         self._play_state: Optional[PlayState] = None
         self._now_playing: Optional[NowPlaying] = None
+        self._audio: Audio | None = None
         self._audio_output: Optional[AudioOutput] = None
         self._display: Optional[Display] = None
         self._update: Optional[Update] = None
@@ -161,6 +164,7 @@ class StreamMagicClient:
                 self._state,
                 self._play_state,
                 self._now_playing,
+                self._audio,
                 self._audio_output,
                 self._display,
                 self._update,
@@ -171,6 +175,7 @@ class StreamMagicClient:
                 self.get_state(),
                 self.get_play_state(),
                 self.get_now_playing(),
+                self.get_audio(),
                 self.get_audio_output(),
                 self.get_display(),
                 self.get_update(),
@@ -183,6 +188,7 @@ class StreamMagicClient:
                 self.subscribe(self._async_handle_play_state, ep.PLAY_STATE),
                 self.subscribe(self._async_handle_position, ep.POSITION),
                 self.subscribe(self._async_handle_now_playing, ep.NOW_PLAYING),
+                self.subscribe(self._async_handle_audio, ep.AUDIO),
                 self.subscribe(self._async_handle_audio_output, ep.ZONE_AUDIO_OUTPUT),
                 self.subscribe(self._async_handle_display, ep.DISPLAY),
                 self.subscribe(self._async_handle_update, ep.UPDATE),
@@ -325,6 +331,13 @@ class StreamMagicClient:
         return self._now_playing
 
     @property
+    def audio(self) -> Audio:
+        """Return a type-guaranteed instance of Audio"""
+        if not self._audio:
+            raise StreamMagicError("Audio not available.")
+        return self._audio
+
+    @property
     def audio_output(self) -> AudioOutput:
         """Return a type-guaranteed instance of AudioOutput"""
         if not self._audio_output:
@@ -377,6 +390,11 @@ class StreamMagicClient:
         """Get now playing information from device."""
         data = await self.request(ep.NOW_PLAYING)
         return NowPlaying.from_dict(data["params"]["data"])
+
+    async def get_audio(self) -> Audio:
+        """Get audio information from device."""
+        data = await self.request(ep.AUDIO)
+        return Audio.from_dict(data["params"]["data"])
 
     async def get_audio_output(self) -> AudioOutput:
         """Get audio output information from device."""
@@ -440,6 +458,13 @@ class StreamMagicClient:
         params = payload["params"]
         if "data" in params:
             self._now_playing = NowPlaying.from_dict(params["data"])
+        await self.do_state_update_callbacks()
+
+    async def _async_handle_audio(self, payload: dict[str, Any]) -> None:
+        """Handle async audio update."""
+        params = payload["params"]
+        if "data" in params:
+            self._audio = Audio.from_dict(params["data"])
         await self.do_state_update_callbacks()
 
     async def _async_handle_audio_output(self, payload: dict[str, Any]) -> None:
@@ -600,23 +625,12 @@ class StreamMagicClient:
         """Sets whether the internal equalizer is enabled."""
         await self.request(ep.AUDIO, params={"zone": "ZONE1", "user_eq": enabled})
 
-    async def set_equalizer(self, gains: list[float]) -> None:
-        """Sets the internal equalizer to the provided 7-band gain settings."""
-        if (
-            not isinstance(gains, list)
-            or len(gains) != 7
-            or not all(isinstance(g, (float, int)) for g in gains)
-        ):
-            raise StreamMagicError("gains must be a list of 7 floats")
-
-        # Create the string in the required format
-        gains_str = "|".join(f"{i},,,{g:.1f}," for i, g in enumerate(gains))
-
-        # Encode ',' and '|' to their URL-safe representations to avoid issues in HTTP parameters
-        gains_str = gains_str.replace(",", "%2C").replace("|", "%7C")
+    async def set_equalizer(self, settings: UserEQ) -> None:
+        """Sets the internal equalizer to the provided settings"""
 
         await self.request(
-            ep.AUDIO, params={"zone": "ZONE1", "user_eq_bands": gains_str}
+            ep.AUDIO,
+            params={"zone": "ZONE1", "user_eq_bands": settings.to_param_string()},
         )
 
     async def set_volume_limit(self, volume_limit_percent: int) -> None:

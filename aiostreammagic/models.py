@@ -305,6 +305,21 @@ class UserEQ(DataClassORJSONMixin):
         metadata=field_options(alias="bands"), default_factory=list
     )
 
+    def to_param_string(self) -> str:
+        # Format and encode as required by the API
+        def fmt(val, float_fmt=None):
+            if val is None:
+                return ""
+            if float_fmt and isinstance(val, float):
+                return float_fmt.format(val)
+            return str(val)
+
+        gains_str = "|".join(
+            f"{fmt(band.index)},{fmt(band.filter)},{fmt(band.freq)},{fmt(band.gain, '{:.1f}')},{fmt(band.q)}"
+            for band in self.bands
+        )
+        return gains_str.replace(",", "%2C").replace("|", "%7C")
+
 
 @dataclass
 class TiltEQ(DataClassORJSONMixin):
