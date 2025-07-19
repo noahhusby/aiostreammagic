@@ -43,7 +43,7 @@ The zone parameter is optional and presumably, especially for devices that suppo
 curl "http://<DEVICE_IP>/smoip/zone/audio?zone=ZONE1"
 ```
 
-### JSON Response Format
+#### JSON Response Format
 
 ```json
 {
