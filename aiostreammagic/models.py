@@ -63,11 +63,26 @@ class ControlBusMode(StrEnum):
     RECEIVER = "receiver"
     OFF = "off"
 
+
 class StandbyMode(StrEnum):
     """Standby mode"""
 
     ECO = "ECO_MODE"
     NETWORK = "NETWORK"
+
+
+class EQFilterType(StrEnum):
+    """EQ filter type."""
+
+    LOWSHELF = "LOWSHELF"
+    PEAKING = "PEAKING"
+    HIGHSHELF = "HIGHSHELF"
+
+
+class Pipeline(StrEnum):
+    """Pipeline type."""
+
+    DSP = "DSP"
 
 
 @dataclass
@@ -268,3 +283,45 @@ class Update(DataClassORJSONMixin):
         metadata=field_options(alias="update_available"), default=False
     )
     updating: bool = field(metadata=field_options(alias="updating"), default=False)
+
+
+@dataclass
+class EQBand(DataClassORJSONMixin):
+    """Represents a single EQ band."""
+
+    index: int = field(metadata=field_options(alias="index"))
+    filter: EQFilterType = field(metadata=field_options(alias="filter"))
+    freq: int = field(metadata=field_options(alias="freq"))
+    gain: float = field(metadata=field_options(alias="gain"))
+    q: float = field(metadata=field_options(alias="q"))
+
+
+@dataclass
+class UserEQ(DataClassORJSONMixin):
+    """Represents user EQ settings."""
+
+    enabled: bool = field(metadata=field_options(alias="enabled"))
+    bands: list[EQBand] = field(
+        metadata=field_options(alias="bands"), default_factory=list
+    )
+
+
+@dataclass
+class TiltEQ(DataClassORJSONMixin):
+    """Represents tilt EQ settings."""
+
+    enabled: bool = field(metadata=field_options(alias="enabled"))
+    intensity: int = field(metadata=field_options(alias="intensity"))
+
+
+@dataclass
+class Audio(DataClassORJSONMixin):
+    """Represents audio settings including EQ and balance."""
+
+    volume_limit_percent: int = field(
+        metadata=field_options(alias="volume_limit_percent")
+    )
+    tilt_eq: TiltEQ = field(metadata=field_options(alias="tilt_eq"))
+    user_eq: UserEQ = field(metadata=field_options(alias="user_eq"))
+    balance: int = field(metadata=field_options(alias="balance"))
+    pipeline: Pipeline = field(metadata=field_options(alias="pipeline"))
