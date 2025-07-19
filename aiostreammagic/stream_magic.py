@@ -390,10 +390,13 @@ class StreamMagicClient:
         data = await self.request(ep.NOW_PLAYING)
         return NowPlaying.from_dict(data["params"]["data"])
 
-    async def get_audio(self) -> Audio:
+    async def get_audio(self) -> Audio | None:
         """Get audio information from device."""
-        data = await self.request(ep.AUDIO)
-        return Audio.from_dict(data["params"]["data"])
+        if Version(self.info.api_version) < Version("1.9"):
+            return None
+        else:
+            data = await self.request(ep.AUDIO)
+            return Audio.from_dict(data["params"]["data"])
 
     async def get_audio_output(self) -> AudioOutput:
         """Get audio output information from device."""
@@ -636,16 +639,13 @@ class StreamMagicClient:
         """Sets the volume limit for the internal pre-amp. Value must be between 0 and 100."""
         if not 0 <= volume_limit_percent <= 100:
             raise StreamMagicError("Volume limit must be between 0 and 100")
-        if not self._info or not hasattr(self._info, "api_version"):
-            raise StreamMagicError("Device info or API version not available.")
-        if Version(self._info.api_version) < Version("1.9"):
-            await self.request(
-                ep.ZONE_STATE, params={"volume_limit_percent": volume_limit_percent}
-            )
+        if Version(self.info.api_version) < Version("1.9"):
+            endpoint = ep.ZONE_STATE
         else:
-            await self.request(
-                ep.AUDIO, params={"volume_limit_percent": volume_limit_percent}
-            )
+            endpoint = ep.AUDIO
+        await self.request(
+            endpoint, params={"volume_limit_percent": volume_limit_percent}
+        )
 
     async def set_device_name(self, device_name: str) -> None:
         """Set the device name."""
