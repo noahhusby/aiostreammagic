@@ -189,12 +189,17 @@ class StreamMagicClient:
                 self.subscribe(self._async_handle_play_state, ep.PLAY_STATE),
                 self.subscribe(self._async_handle_position, ep.POSITION),
                 self.subscribe(self._async_handle_now_playing, ep.NOW_PLAYING),
-                self.subscribe(self._async_handle_audio, ep.AUDIO),
                 self.subscribe(self._async_handle_audio_output, ep.ZONE_AUDIO_OUTPUT),
                 self.subscribe(self._async_handle_display, ep.DISPLAY),
                 self.subscribe(self._async_handle_update, ep.UPDATE),
                 self.subscribe(self._async_handle_preset_list, ep.PRESET_LIST),
             }
+            # Only subscribe to audio updates if supported
+            if Version(self.info.api_version) >= Version("1.9"):
+                subscribe_state_updates.add(
+                    self.subscribe(self._async_handle_audio, ep.AUDIO)
+                )
+
             subscribe_tasks = set()
             for state_update in subscribe_state_updates:
                 subscribe_tasks.add(asyncio.create_task(state_update))
@@ -395,7 +400,7 @@ class StreamMagicClient:
     async def get_audio(self) -> Audio | None:
         """Get audio information from device."""
         if Version(self.info.api_version) < Version("1.9"):
-            raise StreamMagicError("Audio information not available on this device.")
+            return None
         data = await self.request(ep.AUDIO)
         return Audio.from_dict(data["params"]["data"])
 
