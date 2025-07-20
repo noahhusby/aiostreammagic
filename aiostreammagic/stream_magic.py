@@ -395,10 +395,9 @@ class StreamMagicClient:
     async def get_audio(self) -> Audio | None:
         """Get audio information from device."""
         if Version(self.info.api_version) < Version("1.9"):
-            return None
-        else:
-            data = await self.request(ep.AUDIO)
-            return Audio.from_dict(data["params"]["data"])
+            raise StreamMagicError("Audio information not available on this device.")
+        data = await self.request(ep.AUDIO)
+        return Audio.from_dict(data["params"]["data"])
 
     async def get_audio_output(self) -> AudioOutput:
         """Get audio output information from device."""
