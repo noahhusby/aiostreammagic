@@ -159,8 +159,9 @@ class StreamMagicClient:
             x = asyncio.create_task(
                 self.consumer_handler(ws, self._subscriptions, self.futures)
             )
+            # Info needs to be fetched first to ensure we have the API version
+            self._info = await self.get_info()
             (
-                self._info,
                 self.sources,
                 self._state,
                 self._play_state,
@@ -171,7 +172,6 @@ class StreamMagicClient:
                 self._update,
                 self._preset_list,
             ) = await asyncio.gather(
-                self.get_info(),
                 self.get_sources(),
                 self.get_state(),
                 self.get_play_state(),
