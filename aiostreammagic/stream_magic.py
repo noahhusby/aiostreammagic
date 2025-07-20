@@ -627,6 +627,8 @@ class StreamMagicClient:
 
     async def set_equalizer_mode(self, enabled: bool) -> None:
         """Sets whether the internal equalizer is enabled."""
+        if Version(self.info.api_version) < Version("1.9"):
+            raise StreamMagicError("Equalizer is not supported on this device")
         await self.request(ep.AUDIO, params={"zone": "ZONE1", "user_eq": enabled})
 
     async def set_equalizer_band_filter(
@@ -679,11 +681,36 @@ class StreamMagicClient:
 
     async def set_equalizer_params(self, settings: UserEQ) -> None:
         """Sets the internal equalizer to the provided settings"""
-
+        if Version(self.info.api_version) < Version("1.9"):
+            raise StreamMagicError("Equalizer is not supported on this device")
         await self.request(
             ep.AUDIO,
             params={"zone": "ZONE1", "user_eq_bands": settings.to_param_string()},
         )
+
+    async def set_room_correction_mode(self, enabled: bool) -> None:
+        """Sets whether the internal room correction is enabled."""
+        if Version(self.info.api_version) < Version("1.9"):
+            raise StreamMagicError("Room correction is not supported on this device")
+        await self.request(ep.AUDIO, params={"zone": "ZONE1", "tilt_eq": enabled})
+
+    async def set_room_correction_intensity(self, intensity: int) -> None:
+        """Sets the intensity of the room correction."""
+        if Version(self.info.api_version) < Version("1.9"):
+            raise StreamMagicError("Room correction is not supported on this device")
+        if not -15 <= intensity <= 15:
+            raise StreamMagicError("Intensity must be between -15 and 15")
+        await self.request(
+            ep.AUDIO, params={"zone": "ZONE1", "tilt_intensity": intensity}
+        )
+
+    async def set_balance(self, balance: int) -> None:
+        """Sets the balance for the internal pre-amp of the device."""
+        if Version(self.info.api_version) < Version("1.9"):
+            raise StreamMagicError("Balance is not supported on this device")
+        if not -15 <= balance <= 15:
+            raise StreamMagicError("Balance must be between -15 and 15")
+        await self.request(ep.ZONE_STATE, params={"zone": "ZONE1", "balance": balance})
 
     async def set_volume_limit(self, volume_limit_percent: int) -> None:
         """Sets the volume limit for the internal pre-amp. Value must be between 0 and 100."""
