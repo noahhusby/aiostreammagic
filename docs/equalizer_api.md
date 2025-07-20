@@ -2,7 +2,7 @@
 
 ## Features
 
-- Volume limit
+- Volume limit for streaming services
 - Balance control
 - Parametric equalizer
 - Room compensation (tilt equalizer)
@@ -80,6 +80,8 @@ curl "http://<DEVICE_IP>/smoip/zone/audio?zone=ZONE1"
 > The API endpoint for the volume limit seems to have changed with the latest update.
 > It used to be `/zone/state`.
 
+From the Cambridge Audio documentation: This sets the maximum volume that other streaming services like AirPlay, Spotify, TIDAL Connect and Google Cast can set. The front panel, remote control and StreamMagic app volume controls can override this setting.
+
 ```bash
 # Set volume limit (0-100%)
 curl "http://<DEVICE_IP>/smoip/zone/audio?volume_limit_percent=<value>"
@@ -145,7 +147,7 @@ user_eq_bands=[index],[filter],[freq],[gain],[q]|1,[filter],[freq],[gain],[q]|2,
 #### Parameters
 
 - `index`: Band number (0-6)
-- `filter`: Filter type (LOWSHELF, PEAKING, HIGHSHELF)
+- `filter`: Filter type (LOWSHELF, PEAKING, HIGHSHELF, LOWPASS, HIGHPASS, NOTCH)
 - `freq`: Frequency in Hz
 - `gain`: Gain in dB
 - `q`: Q factor
@@ -298,6 +300,11 @@ curl "http://<DEVICE_IP>/smoip/zone/audio?tilt_eq=true&tilt_intensity=+8"
 ```
 
 ## Audio Pipeline (undocumented)
+
+Functionality tbd. Possible options:
+
+- DSP
+- DIRECT
 
 ```bash
 # Set audio processing pipeline
