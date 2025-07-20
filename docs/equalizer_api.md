@@ -148,9 +148,9 @@ user_eq_bands=[index],[filter],[freq],[gain],[q]|1,[filter],[freq],[gain],[q]|2,
 
 - `index`: Band number (0-6)
 - `filter`: Filter type (LOWSHELF, PEAKING, HIGHSHELF, LOWPASS, HIGHPASS, NOTCH)
-- `freq`: Frequency in Hz
-- `gain`: Gain in dB
-- `q`: Q factor
+- `freq`: Frequency in Hz (20 Hz to 20 kHz)
+- `gain`: Gain in dB (-6 dB to 3 dB)
+- `q`: Q factor (API seems to accept any value (0-100 confirmed), but a range from 0.1 to 10 seems reasonable)
 
 **Note**: Filter type modification requires further testing to confirm supported values.
 
