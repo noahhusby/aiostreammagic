@@ -1,6 +1,8 @@
 import pytest
 from aiohttp import ClientSession
 from aiostreammagic.stream_magic import StreamMagicClient
+from packaging.version import Version
+
 
 # Set your device IP here or use an environment variable
 DEVICE_HOST = "192.168.1.29"
@@ -34,7 +36,7 @@ async def test_set_and_restore_volume_limit():
         client = StreamMagicClient(DEVICE_HOST, session=session)
         await client.connect()
         # TODO: Find out how to get current limit for older versions
-        if client.info.api_version >= "1.9":
+        if Version(client.info.api_version) >= Version("1.9"):
             # Get the current volume limit
             audio = client.audio
             assert audio is not None
