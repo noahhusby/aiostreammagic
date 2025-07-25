@@ -184,7 +184,7 @@ curl "http://<DEVICE_IP>/smoip/zone/audio?user_eq_bands=0,,100,,"
 
 ```bash
 # Change Band 2 Q to 2.0, preserve all other settings
-curl "http://<DEVICE_IP>/smoip/zone/audio?user_eq_bands=2,,,2.0"
+curl "http://<DEVICE_IP>/smoip/zone/audio?user_eq_bands=2,,,,2.0"
 ```
 
 #### Change Multiple Parameters for One Band
