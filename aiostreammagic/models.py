@@ -323,10 +323,10 @@ class UserEQ(DataClassORJSONMixin):
             return str(val)
 
         param_str = "|".join(
-            f"{fmt(band.index)},{fmt(band.filter)},{fmt(band.freq)},{fmt(band.gain, '{:.1f}')},{fmt(band.q), '{:.2f}'}"
+            f"{fmt(band.index)},{fmt(band.filter)},{fmt(band.freq)},{fmt(band.gain, '{:.1f}')},{fmt(band.q, '{:.2f}')}"
             for band in self.bands
         )
-        return param_str.replace(",", "%2C").replace("|", "%7C")
+        return param_str
 
 
 @dataclass
