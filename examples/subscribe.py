@@ -3,7 +3,7 @@ import asyncio
 from aiostreammagic.stream_magic import StreamMagicClient
 from aiostreammagic.models import CallbackType
 
-HOST = "192.168.x.x"  # Replace with your StreamMagic device's IP address
+HOST = "192.168.20.218"
 
 
 async def on_state_change(
@@ -22,7 +22,7 @@ async def on_state_change(
 
 async def main() -> None:
     """Subscribe demo entrypoint."""
-    client = StreamMagicClient(HOST)
+    client = StreamMagicClient("192.168.20.218")
     await client.register_state_update_callbacks(on_state_change)
     await client.connect()
 

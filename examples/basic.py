@@ -2,12 +2,12 @@ import asyncio
 
 from aiostreammagic import StreamMagicClient, Source, Info
 
-HOST = "192.168.x.x"  # Replace with your StreamMagic device's IP address
+HOST = "192.168.20.218"
 
 
 async def main() -> None:
     """Basic demo entrypoint."""
-    client = StreamMagicClient(HOST)
+    client = StreamMagicClient("192.168.20.218")
     await client.connect()
 
     info: Info = await client.get_info()
