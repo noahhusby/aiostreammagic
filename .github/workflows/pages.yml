@@ -35,7 +35,7 @@ jobs:
           poetry config virtualenvs.create true
           poetry config virtualenvs.in-project true
       - name: 🏗 Install dependencies
-        run: poetry install --no-interaction --extras docs
+        run: poetry install --no-interaction --with docs
       - run: poetry run python -m pdoc ./aiostreammagic -o docs/
       - name: Setup Pages
         uses: actions/configure-pages@v5
