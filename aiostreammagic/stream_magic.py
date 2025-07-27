@@ -58,6 +58,7 @@ class StreamMagicClient:
         self._attempt_reconnection = False
         self._reconnect_task: Optional[Task[Any]] = None
         self.position_last_updated: datetime = datetime.now()
+        self._subscription_tasks: dict[str, asyncio.Task[Any]] = {}
 
     async def register_state_update_callbacks(self, callback: Any) -> None:
         """Register state update callback."""
@@ -106,6 +107,14 @@ class StreamMagicClient:
             except asyncio.CancelledError:
                 pass
             await self.do_state_update_callbacks(CallbackType.CONNECTION)
+        # Cancel all subscription handler tasks
+        for task in self._subscription_tasks.values():
+            task.cancel()
+        await asyncio.gather(*self._subscription_tasks.values(), return_exceptions=True)
+        self._subscription_tasks.clear()
+        # Properly close the aiohttp session if it was created by this client
+        if self.session is not None and not self.session.closed:
+            await self.session.close()
 
     def is_connected(self) -> bool:
         """Return True if device is connected."""
@@ -222,7 +231,6 @@ class StreamMagicClient:
     ) -> None:
         """Callback consumer handler."""
         subscription_queues = {}
-        subscription_tasks = {}
         try:
             async for raw_msg in ws:
                 if futures or subscriptions:
@@ -236,14 +244,13 @@ class StreamMagicClient:
                             if not future.done():
                                 future.set_result(msg)
                     if subscription:
-                        if path not in subscription_tasks:
+                        if path not in self._subscription_tasks:
                             queue = asyncio.Queue()
                             subscription_queues[path] = queue
-                            subscription_tasks[path] = asyncio.create_task(
+                            self._subscription_tasks[path] = asyncio.create_task(
                                 self.subscription_handler(queue, subscription)
                             )
                         subscription_queues[path].put_nowait(msg)
-
         except (asyncio.CancelledError,):
             pass
 
