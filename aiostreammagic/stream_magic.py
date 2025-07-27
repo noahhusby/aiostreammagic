@@ -634,4 +634,17 @@ class StreamMagicClient:
 
     async def set_auto_power_down(self, auto_power_down_time_seconds: int) -> None:
         """Set the automatic power down time."""
-        await self.request(ep.POWER, params={"auto_power_down": auto_power_down_time_seconds})
+        await self.request(
+            ep.POWER, params={"auto_power_down": auto_power_down_time_seconds}
+        )
+
+    async def close(self) -> None:
+        """Close the client session if it was created internally."""
+        if self.session and not self.session.closed:
+            await self.session.close()
+
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, exc_type, exc, tb):
+        await self.close()
