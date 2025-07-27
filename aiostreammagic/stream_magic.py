@@ -113,8 +113,7 @@ class StreamMagicClient:
         await asyncio.gather(*self._subscription_tasks.values(), return_exceptions=True)
         self._subscription_tasks.clear()
         # Properly close the aiohttp session if it was created by this client
-        if self.session is not None and not self.session.closed:
-            await self.session.close()
+        await self.close()
 
     def is_connected(self) -> bool:
         """Return True if device is connected."""
@@ -647,7 +646,7 @@ class StreamMagicClient:
 
     async def close(self) -> None:
         """Close the client session if it was created internally."""
-        if self.session and not self.session.closed:
+        if self.session is not None and not self.session.closed:
             await self.session.close()
 
     async def __aenter__(self):
