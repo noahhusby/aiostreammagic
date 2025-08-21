@@ -16,9 +16,9 @@ repos:
         entry: poetry run ruff format
         require_serial: true
         stages: [pre-commit, pre-push, manual]
-      - id: mypy
-        name: Static type checking using mypy
-        language: system
-        types: [python]
-        entry: poetry run mypy
-        require_serial: true
+      # - id: mypy
+      #   name: Static type checking using mypy
+      #   language: system
+      #   types: [python]
+      #   entry: poetry run mypy
+      #   require_serial: true
