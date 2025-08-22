@@ -102,7 +102,7 @@ class StreamMagicClient:
         """Disconnect from StreamMagic enabled devices."""
         if self.is_connected():
             self._attempt_reconnection = False
-            if self.connect_task is not None:
+            if self.connect_task:
                 self.connect_task.cancel()
                 try:
                     await self.connect_task
