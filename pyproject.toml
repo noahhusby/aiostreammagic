@@ -33,6 +33,7 @@ dev = [
 ]
 docs = [
     "pdoc>=14.7,<16.0"
+]
 
 [tool.mypy]
 # Specify the target platform details in config, so your developers are
