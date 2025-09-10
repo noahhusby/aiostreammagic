@@ -150,8 +150,6 @@ class StreamMagicClient:
     async def _connect_handler(self, res: Future[bool]) -> None:
         """Handle connection for StreamMagic."""
         try:
-            if not self.session:
-                self.session = ClientSession()
             self.futures = {}
             self._allow_state_update = False
             uri = f"ws://{self.host}/smoip"
