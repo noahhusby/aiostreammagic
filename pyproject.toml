@@ -20,9 +20,9 @@ dependencies = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/noahhusby/aiostreammagic"
-Repository = "https://github.com/noahhusby/aiostreammagic"
-Documentation = "https://github.com/noahhusby/aiostreammagic"
+homepage = "https://github.com/noahhusby/aiostreammagic"
+repository = "https://github.com/noahhusby/aiostreammagic"
+documentation = "https://github.com/noahhusby/aiostreammagic"
 
 [project.optional-dependencies]
 dev = [
