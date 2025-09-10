@@ -20,6 +20,7 @@ This module implements a Python client for the Stream Magic API used to control 
 
 ## Supported Devices
 
+- Cambridge Audio Evo One
 - Cambridge Audio Evo 75
 - Cambridge Audio Evo 150
 - Cambridge Audio CXN
