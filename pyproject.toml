@@ -8,11 +8,8 @@ authors = [
 maintainers = [
     { name = "Noah Husby", email = "32528627+noahhusby@users.noreply.github.com" }
 ]
-license = { text = "MIT" }
+license = "MIT"
 readme = "README.md"
-homepage = "https://github.com/noahhusby/aiostreammagic"
-repository = "https://github.com/noahhusby/aiostreammagic"
-documentation = "https://github.com/noahhusby/aiostreammagic"
 
 requires-python = ">=3.11"
 dependencies = [
@@ -21,6 +18,11 @@ dependencies = [
     "orjson>=3.11.0",
     "aiohttp>=3.12.14"
 ]
+
+[project.urls]
+Homepage = "https://github.com/noahhusby/aiostreammagic"
+Repository = "https://github.com/noahhusby/aiostreammagic"
+Documentation = "https://github.com/noahhusby/aiostreammagic"
 
 [project.optional-dependencies]
 dev = [
