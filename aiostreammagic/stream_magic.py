@@ -4,7 +4,7 @@ import asyncio
 import json
 from asyncio import AbstractEventLoop, Future, Task, Queue
 from datetime import datetime, UTC
-from typing import Any, Optional
+from typing import Any, Optional, Callable, Awaitable
 
 from aiohttp import ClientWebSocketResponse, ClientSession
 
@@ -95,17 +95,20 @@ class StreamMagicClient:
             self._reconnect_task = asyncio.create_task(
                 self._reconnect_handler(self.connect_result)
             )
-        return await self.connect_result
+            return await self.connect_result
+        # Already connected, just return True
+        return True
 
     async def disconnect(self) -> None:
         """Disconnect from StreamMagic enabled devices."""
         if self.is_connected():
             self._attempt_reconnection = False
-            self.connect_task.cancel()
-            try:
-                await self.connect_task
-            except asyncio.CancelledError:
-                pass
+            if self.connect_task:
+                self.connect_task.cancel()
+                try:
+                    await self.connect_task
+                except asyncio.CancelledError:
+                    pass
             await self.do_state_update_callbacks(CallbackType.CONNECTION)
         # Cancel all subscription handler tasks
         for task in self._subscription_tasks.values():
@@ -122,6 +125,8 @@ class StreamMagicClient:
 
     async def _ws_connect(self, uri: str) -> ClientWebSocketResponse:
         """Establish a connection with a WebSocket."""
+        if self.session is None:
+            self.session = ClientSession()
         return await self.session.ws_connect(
             uri,
             headers={
@@ -154,8 +159,6 @@ class StreamMagicClient:
     async def _connect_handler(self, res: Future[bool]) -> None:
         """Handle connection for StreamMagic."""
         try:
-            if not self.session:
-                self.session = ClientSession()
             self.futures = {}
             self._allow_state_update = False
             uri = f"ws://{self.host}/smoip"
@@ -164,6 +167,8 @@ class StreamMagicClient:
             x = asyncio.create_task(
                 self.consumer_handler(ws, self._subscriptions, self.futures)
             )
+            # mypy/typeshed bug: https://github.com/python/mypy/issues/17030
+            # The following ignore is safe because we know the return types.
             (
                 self._info,
                 self.sources,
@@ -174,7 +179,7 @@ class StreamMagicClient:
                 self._display,
                 self._update,
                 self._preset_list,
-            ) = await asyncio.gather(
+            ) = await asyncio.gather(  # type: ignore[assignment]
                 self.get_info(),
                 self.get_sources(),
                 self.get_state(),
@@ -214,7 +219,10 @@ class StreamMagicClient:
             _LOGGER.error(ex, exc_info=True)
 
     @staticmethod
-    async def subscription_handler(queue: Queue, callback) -> None:
+    async def subscription_handler(
+        queue: Queue[dict[str, Any]],
+        callback: Callable[[dict[str, Any]], Awaitable[None]],
+    ) -> None:
         """Handle subscriptions."""
         try:
             while True:
@@ -227,7 +235,7 @@ class StreamMagicClient:
         self,
         ws: ClientWebSocketResponse,
         subscriptions: dict[str, list[Any]],
-        futures: dict[str, list[asyncio.Future]],
+        futures: dict[str, list[asyncio.Future[Any]]],
     ) -> None:
         """Callback consumer handler."""
         subscription_queues = {}
@@ -245,7 +253,7 @@ class StreamMagicClient:
                                 future.set_result(msg)
                     if subscription:
                         if path not in self._subscription_tasks:
-                            queue = asyncio.Queue()
+                            queue: Queue[dict[str, Any]] = asyncio.Queue()
                             subscription_queues[path] = queue
                             self._subscription_tasks[path] = asyncio.create_task(
                                 self.subscription_handler(queue, subscription)
