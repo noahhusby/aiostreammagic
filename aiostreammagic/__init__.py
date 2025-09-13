@@ -14,9 +14,6 @@ from .models import (
     TransportControl,
     RepeatMode,
     ShuffleMode,
-    EQBand,
-    UserEQ,
-    EQFilterType,
 )
 from .stream_magic import StreamMagicClient
 
@@ -34,7 +31,4 @@ __all__ = [
     "TransportControl",
     "ShuffleMode",
     "RepeatMode",
-    "EQBand",
-    "UserEQ",
-    "EQFilterType",
 ]
