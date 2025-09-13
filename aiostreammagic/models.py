@@ -63,11 +63,30 @@ class ControlBusMode(StrEnum):
     RECEIVER = "receiver"
     OFF = "off"
 
+
 class StandbyMode(StrEnum):
     """Standby mode"""
 
     ECO = "ECO_MODE"
     NETWORK = "NETWORK"
+
+
+class EQFilterType(StrEnum):
+    """EQ filter type."""
+
+    LOWSHELF = "LOWSHELF"
+    PEAKING = "PEAKING"
+    HIGHSHELF = "HIGHSHELF"
+    LOWPASS = "LOWPASS"
+    HIGHPASS = "HIGHPASS"
+    NOTCH = "NOTCH"
+
+
+class Pipeline(StrEnum):
+    """Pipeline type."""
+
+    DSP = "DSP"
+    DIRECT = "DIRECT"
 
 
 @dataclass
@@ -268,3 +287,64 @@ class Update(DataClassORJSONMixin):
         metadata=field_options(alias="update_available"), default=False
     )
     updating: bool = field(metadata=field_options(alias="updating"), default=False)
+
+
+@dataclass
+class EQBand(DataClassORJSONMixin):
+    """Represents a single EQ band."""
+
+    index: Optional[int] = field(metadata=field_options(alias="index"), default=None)
+    filter: Optional[EQFilterType] = field(
+        metadata=field_options(alias="filter"), default=None
+    )
+    freq: Optional[int] = field(metadata=field_options(alias="freq"), default=None)
+    gain: Optional[float] = field(metadata=field_options(alias="gain"), default=None)
+    q: Optional[float] = field(metadata=field_options(alias="q"), default=None)
+
+
+@dataclass
+class UserEQ(DataClassORJSONMixin):
+    """Represents user EQ settings."""
+
+    enabled: Optional[bool] = field(
+        metadata=field_options(alias="enabled"), default=None
+    )
+    bands: list[EQBand] = field(
+        metadata=field_options(alias="bands"), default_factory=list
+    )
+
+    def to_param_string(self) -> str:
+        # Format and encode as required by the API
+        def fmt(val, float_fmt=None):
+            if val is None:
+                return ""
+            if float_fmt and isinstance(val, float):
+                return float_fmt.format(val)
+            return str(val)
+
+        param_str = "|".join(
+            f"{fmt(band.index)},{fmt(band.filter)},{fmt(band.freq)},{fmt(band.gain, '{:.1f}')},{fmt(band.q, '{:.2f}')}"
+            for band in self.bands
+        )
+        return param_str
+
+
+@dataclass
+class TiltEQ(DataClassORJSONMixin):
+    """Represents tilt EQ settings."""
+
+    enabled: bool = field(metadata=field_options(alias="enabled"))
+    intensity: int = field(metadata=field_options(alias="intensity"))
+
+
+@dataclass
+class Audio(DataClassORJSONMixin):
+    """Represents audio settings including EQ and balance."""
+
+    volume_limit_percent: int = field(
+        metadata=field_options(alias="volume_limit_percent")
+    )
+    tilt_eq: TiltEQ = field(metadata=field_options(alias="tilt_eq"))
+    user_eq: UserEQ = field(metadata=field_options(alias="user_eq"))
+    balance: int = field(metadata=field_options(alias="balance"))
+    pipeline: Pipeline = field(metadata=field_options(alias="pipeline"))

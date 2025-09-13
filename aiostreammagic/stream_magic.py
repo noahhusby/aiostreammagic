@@ -25,11 +25,14 @@ from aiostreammagic.models import (
     PresetList,
     ControlBusMode,
     StandbyMode,
+    Audio,
+    UserEQ,
+    EQBand,
+    EQFilterType,
 )
 from . import endpoints as ep
 from .const import _LOGGER
-
-VERSION = "1.0.0"
+from packaging.version import Version
 
 
 class StreamMagicClient:
@@ -51,6 +54,7 @@ class StreamMagicClient:
         self._state: Optional[State] = None
         self._play_state: Optional[PlayState] = None
         self._now_playing: Optional[NowPlaying] = None
+        self._audio: Audio | None = None
         self._audio_output: Optional[AudioOutput] = None
         self._display: Optional[Display] = None
         self._update: Optional[Update] = None
@@ -167,29 +171,34 @@ class StreamMagicClient:
             x = asyncio.create_task(
                 self.consumer_handler(ws, self._subscriptions, self.futures)
             )
+            # Info needs to be fetched first to ensure we have the API version
+            # for the get_audio() call
+            self._info = await self.get_info()
+
             # mypy/typeshed bug: https://github.com/python/mypy/issues/17030
             # The following ignore is safe because we know the return types.
             (
-                self._info,
                 self.sources,
                 self._state,
                 self._play_state,
                 self._now_playing,
+                self._audio,
                 self._audio_output,
                 self._display,
                 self._update,
                 self._preset_list,
             ) = await asyncio.gather(  # type: ignore[assignment]
-                self.get_info(),
                 self.get_sources(),
                 self.get_state(),
                 self.get_play_state(),
                 self.get_now_playing(),
+                self.get_audio(),
                 self.get_audio_output(),
                 self.get_display(),
                 self.get_update(),
                 self.get_preset_list(),
             )
+
             subscribe_state_updates = {
                 self.subscribe(self._async_handle_info, ep.INFO),
                 self.subscribe(self._async_handle_sources, ep.SOURCES),
@@ -202,6 +211,13 @@ class StreamMagicClient:
                 self.subscribe(self._async_handle_update, ep.UPDATE),
                 self.subscribe(self._async_handle_preset_list, ep.PRESET_LIST),
             }
+
+            # Only subscribe to audio updates if supported
+            if Version(self.info.api_version) >= Version("1.9"):
+                subscribe_state_updates.add(
+                    self.subscribe(self._async_handle_audio, ep.AUDIO)
+                )
+
             subscribe_tasks = set()
             for state_update in subscribe_state_updates:
                 subscribe_tasks.add(asyncio.create_task(state_update))
@@ -340,6 +356,13 @@ class StreamMagicClient:
         return self._now_playing
 
     @property
+    def audio(self) -> Audio:
+        """Return a type-guaranteed instance of Audio"""
+        if not self._audio:
+            raise StreamMagicError("Audio not available.")
+        return self._audio
+
+    @property
     def audio_output(self) -> AudioOutput:
         """Return a type-guaranteed instance of AudioOutput"""
         if not self._audio_output:
@@ -392,6 +415,13 @@ class StreamMagicClient:
         """Get now playing information from device."""
         data = await self.request(ep.NOW_PLAYING)
         return NowPlaying.from_dict(data["params"]["data"])
+
+    async def get_audio(self) -> Audio | None:
+        """Get audio information from device."""
+        if Version(self.info.api_version) < Version("1.9"):
+            return None
+        data = await self.request(ep.AUDIO)
+        return Audio.from_dict(data["params"]["data"])
 
     async def get_audio_output(self) -> AudioOutput:
         """Get audio output information from device."""
@@ -455,6 +485,13 @@ class StreamMagicClient:
         params = payload["params"]
         if "data" in params:
             self._now_playing = NowPlaying.from_dict(params["data"])
+        await self.do_state_update_callbacks()
+
+    async def _async_handle_audio(self, payload: dict[str, Any]) -> None:
+        """Handle async audio update."""
+        params = payload["params"]
+        if "data" in params:
+            self._audio = Audio.from_dict(params["data"])
         await self.do_state_update_callbacks()
 
     async def _async_handle_audio_output(self, payload: dict[str, Any]) -> None:
@@ -611,12 +648,103 @@ class StreamMagicClient:
         """Sets whether the internal pre-amp is enabled."""
         await self.request(ep.ZONE_STATE, params={"pre_amp_mode": enabled})
 
+    async def set_equalizer_mode(self, enabled: bool) -> None:
+        """Sets whether the internal equalizer is enabled."""
+        if Version(self.info.api_version) < Version("1.9"):
+            raise StreamMagicError("Equalizer is not supported on this device")
+        await self.request(ep.AUDIO, params={"zone": "ZONE1", "user_eq": enabled})
+
+    async def set_equalizer_band_filter(
+        self, band_index: int, filter_type: EQFilterType
+    ) -> None:
+        """Sets the filter type for a specific equalizer band."""
+        band = EQBand(index=band_index, filter=filter_type)
+        eq = UserEQ(enabled=None, bands=[band])
+        await self.set_equalizer_params(eq)
+
+    async def set_equalizer_band_frequency(
+        self, band_index: int, frequency: int
+    ) -> None:
+        """Sets the frequency for a specific equalizer band."""
+        if not 20 <= frequency <= 20000:
+            raise StreamMagicError("Frequency must be between 20 Hz and 20 kHz")
+        band = EQBand(index=band_index, freq=frequency)
+        eq = UserEQ(enabled=None, bands=[band])
+        await self.set_equalizer_params(eq)
+
+    async def set_equalizer_band_gain(self, band_index: int, gain: float) -> None:
+        """Sets the gain for a specific equalizer band."""
+        if not -6 <= gain <= 3:
+            raise StreamMagicError("Gain must be between -6 dB and 3 dB")
+        band = EQBand(index=band_index, gain=gain)
+        eq = UserEQ(enabled=None, bands=[band])
+        await self.set_equalizer_params(eq)
+
+    async def set_equalizer_band_q_factor(self, band_index: int, q: float) -> None:
+        """Sets the Q factor for a specific equalizer band."""
+        if not 0.1 <= q <= 10:
+            raise StreamMagicError("Q factor must be between 0.1 and 10")
+        band = EQBand(index=band_index, q=q)
+        eq = UserEQ(enabled=None, bands=[band])
+        await self.set_equalizer_params(eq)
+
+    async def set_equalizer_defaults(self) -> None:
+        """Sets the equalizer to the default settings."""
+        bands = [
+            EQBand(index=0, filter=EQFilterType.LOWSHELF, freq=80, gain=0.0, q=0.8),
+            EQBand(index=1, filter=EQFilterType.PEAKING, freq=120, gain=0.0, q=1.24),
+            EQBand(index=2, filter=EQFilterType.PEAKING, freq=315, gain=0.0, q=1.24),
+            EQBand(index=3, filter=EQFilterType.PEAKING, freq=800, gain=0.0, q=1.24),
+            EQBand(index=4, filter=EQFilterType.PEAKING, freq=2000, gain=0.0, q=1.24),
+            EQBand(index=5, filter=EQFilterType.PEAKING, freq=5000, gain=0.0, q=1.24),
+            EQBand(index=6, filter=EQFilterType.HIGHSHELF, freq=8000, gain=0.0, q=0.8),
+        ]
+        eq = UserEQ(enabled=None, bands=bands)
+        await self.set_equalizer_params(eq)
+
+    async def set_equalizer_params(self, settings: UserEQ) -> None:
+        """Sets the internal equalizer to the provided settings"""
+        if Version(self.info.api_version) < Version("1.9"):
+            raise StreamMagicError("Equalizer is not supported on this device")
+        await self.request(
+            ep.AUDIO,
+            params={"zone": "ZONE1", "user_eq_bands": settings.to_param_string()},
+        )
+
+    async def set_room_correction_mode(self, enabled: bool) -> None:
+        """Sets whether the internal room correction is enabled."""
+        if Version(self.info.api_version) < Version("1.9"):
+            raise StreamMagicError("Room correction is not supported on this device")
+        await self.request(ep.AUDIO, params={"zone": "ZONE1", "tilt_eq": enabled})
+
+    async def set_room_correction_intensity(self, intensity: int) -> None:
+        """Sets the intensity of the room correction."""
+        if Version(self.info.api_version) < Version("1.9"):
+            raise StreamMagicError("Room correction is not supported on this device")
+        if not -15 <= intensity <= 15:
+            raise StreamMagicError("Intensity must be between -15 and 15")
+        await self.request(
+            ep.AUDIO, params={"zone": "ZONE1", "tilt_intensity": intensity}
+        )
+
+    async def set_balance(self, balance: int) -> None:
+        """Sets the balance for the internal pre-amp of the device."""
+        if Version(self.info.api_version) < Version("1.9"):
+            raise StreamMagicError("Balance is not supported on this device")
+        if not -15 <= balance <= 15:
+            raise StreamMagicError("Balance must be between -15 and 15")
+        await self.request(ep.ZONE_STATE, params={"zone": "ZONE1", "balance": balance})
+
     async def set_volume_limit(self, volume_limit_percent: int) -> None:
         """Sets the volume limit for the internal pre-amp. Value must be between 0 and 100."""
         if not 0 <= volume_limit_percent <= 100:
             raise StreamMagicError("Volume limit must be between 0 and 100")
+        if Version(self.info.api_version) < Version("1.9"):
+            endpoint = ep.ZONE_STATE
+        else:
+            endpoint = ep.AUDIO
         await self.request(
-            ep.ZONE_STATE, params={"volume_limit_percent": volume_limit_percent}
+            endpoint, params={"volume_limit_percent": volume_limit_percent}
         )
 
     async def set_device_name(self, device_name: str) -> None:
