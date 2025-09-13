@@ -163,7 +163,9 @@ class StreamMagicClient:
                 self.consumer_handler(ws, self._subscriptions, self.futures)
             )
             # Info needs to be fetched first to ensure we have the API version
+            # for the get_audio() call
             self._info = await self.get_info()
+
             # mypy/typeshed bug: https://github.com/python/mypy/issues/17030
             # The following ignore is safe because we know the return types.
             (
@@ -187,6 +189,7 @@ class StreamMagicClient:
                 self.get_update(),
                 self.get_preset_list(),
             )
+
             subscribe_state_updates = {
                 self.subscribe(self._async_handle_info, ep.INFO),
                 self.subscribe(self._async_handle_sources, ep.SOURCES),
@@ -199,6 +202,7 @@ class StreamMagicClient:
                 self.subscribe(self._async_handle_update, ep.UPDATE),
                 self.subscribe(self._async_handle_preset_list, ep.PRESET_LIST),
             }
+
             # Only subscribe to audio updates if supported
             if Version(self.info.api_version) >= Version("1.9"):
                 subscribe_state_updates.add(
