@@ -28,7 +28,7 @@ documentation = "https://github.com/noahhusby/aiostreammagic"
 dev = [
     "mypy==1.18.1",
     "pytest==8.4.2",
-    "pytest-asyncio==1.1.0",
+    "pytest-asyncio==1.2.0",
     "ruff==0.13.0"
 ]
 docs = [
