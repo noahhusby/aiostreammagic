@@ -29,7 +29,7 @@ dev = [
     "mypy==1.17.1",
     "pytest==8.4.2",
     "pytest-asyncio==1.1.0",
-    "ruff==0.12.12"
+    "ruff==0.13.0"
 ]
 docs = [
     "pdoc>=14.7,<16.0"
