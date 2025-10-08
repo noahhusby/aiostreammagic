@@ -29,7 +29,6 @@ from aiostreammagic.models import (
 )
 from . import endpoints as ep
 from .const import _LOGGER
-from packaging.version import Version
 
 
 class StreamMagicClient:
@@ -168,13 +167,11 @@ class StreamMagicClient:
             x = asyncio.create_task(
                 self.consumer_handler(ws, self._subscriptions, self.futures)
             )
-            # Info needs to be fetched first to ensure we have the API version
-            # for the get_audio() call
-            self._info = await self.get_info()
 
             # mypy/typeshed bug: https://github.com/python/mypy/issues/17030
             # The following ignore is safe because we know the return types.
             (
+                self._info,
                 self.sources,
                 self._state,
                 self._play_state,
@@ -185,6 +182,7 @@ class StreamMagicClient:
                 self._update,
                 self._preset_list,
             ) = await asyncio.gather(  # type: ignore[assignment]
+                self.get_info(),
                 self.get_sources(),
                 self.get_state(),
                 self.get_play_state(),
@@ -207,13 +205,8 @@ class StreamMagicClient:
                 self.subscribe(self._async_handle_display, ep.DISPLAY),
                 self.subscribe(self._async_handle_update, ep.UPDATE),
                 self.subscribe(self._async_handle_preset_list, ep.PRESET_LIST),
+                self.subscribe(self._async_handle_audio, ep.AUDIO),
             }
-
-            # Only subscribe to audio updates if supported
-            if Version(self.info.api_version) >= Version("1.9"):
-                subscribe_state_updates.add(
-                    self.subscribe(self._async_handle_audio, ep.AUDIO)
-                )
 
             subscribe_tasks = set()
             for state_update in subscribe_state_updates:
@@ -415,8 +408,6 @@ class StreamMagicClient:
 
     async def get_audio(self) -> Audio | None:
         """Get audio information from device."""
-        if Version(self.info.api_version) < Version("1.9"):
-            return None
         data = await self.request(ep.AUDIO)
         return Audio.from_dict(data["params"]["data"])
 
@@ -687,9 +678,14 @@ class StreamMagicClient:
             ep.POWER, params={"auto_power_down": auto_power_down_time_seconds}
         )
 
-    async def __aenter__(self):
+    async def __aenter__(self) -> "StreamMagicClient":
         await self.connect()
         return self
 
-    async def __aexit__(self, exc_type, exc, tb):
+    async def __aexit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc: BaseException | None,
+        tb: object | None,
+    ) -> None:
         await self.disconnect()
