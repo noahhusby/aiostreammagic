@@ -27,3 +27,10 @@ async def test_get_state() -> None:
         state = client.state
         assert state is not None
         await client.disconnect()
+
+
+@pytest.mark.asyncio
+async def test_audio_endpoint() -> None:
+    async with StreamMagicClient(DEVICE_HOST) as client:
+        audio = client.audio
+        assert audio is not None
