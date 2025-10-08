@@ -293,22 +293,18 @@ class Update(DataClassORJSONMixin):
 class EQBand(DataClassORJSONMixin):
     """Represents a single EQ band."""
 
-    index: Optional[int] = field(metadata=field_options(alias="index"), default=None)
-    filter: Optional[EQFilterType] = field(
-        metadata=field_options(alias="filter"), default=None
-    )
-    freq: Optional[int] = field(metadata=field_options(alias="freq"), default=None)
-    gain: Optional[float] = field(metadata=field_options(alias="gain"), default=None)
-    q: Optional[float] = field(metadata=field_options(alias="q"), default=None)
+    index: int = field(metadata=field_options(alias="index"))
+    filter: EQFilterType = field(metadata=field_options(alias="filter"))
+    freq: int = field(metadata=field_options(alias="freq"))
+    gain: float = field(metadata=field_options(alias="gain"))
+    q: float = field(metadata=field_options(alias="q"))
 
 
 @dataclass
 class UserEQ(DataClassORJSONMixin):
     """Represents user EQ settings."""
 
-    enabled: Optional[bool] = field(
-        metadata=field_options(alias="enabled"), default=None
-    )
+    enabled: bool = field(metadata=field_options(alias="enabled"))
     bands: list[EQBand] = field(
         metadata=field_options(alias="bands"), default_factory=list
     )
@@ -329,7 +325,15 @@ class Audio(DataClassORJSONMixin):
     volume_limit_percent: int = field(
         metadata=field_options(alias="volume_limit_percent")
     )
-    tilt_eq: TiltEQ = field(metadata=field_options(alias="tilt_eq"))
-    user_eq: UserEQ = field(metadata=field_options(alias="user_eq"))
-    balance: int = field(metadata=field_options(alias="balance"))
-    pipeline: Pipeline = field(metadata=field_options(alias="pipeline"))
+    tilt_eq: Optional[TiltEQ] = field(
+        metadata=field_options(alias="tilt_eq"), default=None
+    )
+    user_eq: Optional[UserEQ] = field(
+        metadata=field_options(alias="user_eq"), default=None
+    )
+    balance: Optional[int] = field(
+        metadata=field_options(alias="balance"), default=None
+    )
+    pipeline: Optional[Pipeline] = field(
+        metadata=field_options(alias="pipeline"), default=None
+    )
