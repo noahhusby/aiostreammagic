@@ -322,6 +322,12 @@ class TiltEQ(DataClassORJSONMixin):
 class Audio(DataClassORJSONMixin):
     """Represents audio settings including EQ and balance."""
 
+    digital_filter: Optional[str] = field(
+        metadata=field_options(alias="digital_filter"), default=None
+    )
+    phase_invert: Optional[bool] = field(
+        metadata=field_options(alias="phase_invert"), default=None
+    )
     volume_limit_percent: Optional[int] = field(
         metadata=field_options(alias="volume_limit_percent"), default=None
     )
