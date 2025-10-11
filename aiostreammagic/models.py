@@ -322,8 +322,8 @@ class TiltEQ(DataClassORJSONMixin):
 class Audio(DataClassORJSONMixin):
     """Represents audio settings including EQ and balance."""
 
-    volume_limit_percent: int = field(
-        metadata=field_options(alias="volume_limit_percent")
+    volume_limit_percent: Optional[int] = field(
+        metadata=field_options(alias="volume_limit_percent"), default=None
     )
     tilt_eq: Optional[TiltEQ] = field(
         metadata=field_options(alias="tilt_eq"), default=None
