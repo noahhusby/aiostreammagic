@@ -637,11 +637,11 @@ class StreamMagicClient:
         await self.request(ep.ZONE_STATE, params={"pre_amp_mode": enabled})
 
     async def set_volume_limit(self, volume_limit_percent: int) -> None:
-        """Sets the volume limit for the internal pre-amp. Value must be between 0 and 100."""
-        if not 0 <= volume_limit_percent <= 100:
-            raise StreamMagicError("Volume limit must be between 0 and 100")
+        """Sets the volume limit for the internal pre-amp. Value must be between 1 and 100."""
+        if not 1 <= volume_limit_percent <= 100:
+            raise StreamMagicError("Volume limit must be between 1 and 100")
         await self.request(
-            ep.ZONE_STATE, params={"volume_limit_percent": volume_limit_percent}
+            ep.AUDIO, params={"volume_limit_percent": volume_limit_percent}
         )
 
     async def set_device_name(self, device_name: str) -> None:
@@ -670,7 +670,7 @@ class StreamMagicClient:
 
     async def set_standby_mode(self, standby_mode: StandbyMode) -> None:
         """Set the standby mode."""
-        await self.request(ep.ZONE_STATE, params={"standby_mode": standby_mode})
+        await self.request(ep.POWER, params={"standby_mode": standby_mode})
 
     async def set_auto_power_down(self, auto_power_down_time_seconds: int) -> None:
         """Set the automatic power down time."""
