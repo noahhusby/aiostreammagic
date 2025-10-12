@@ -63,11 +63,30 @@ class ControlBusMode(StrEnum):
     RECEIVER = "receiver"
     OFF = "off"
 
+
 class StandbyMode(StrEnum):
     """Standby mode"""
 
     ECO = "ECO_MODE"
     NETWORK = "NETWORK"
+
+
+class EQFilterType(StrEnum):
+    """EQ filter type."""
+
+    LOWSHELF = "LOWSHELF"
+    PEAKING = "PEAKING"
+    HIGHSHELF = "HIGHSHELF"
+    LOWPASS = "LOWPASS"
+    HIGHPASS = "HIGHPASS"
+    NOTCH = "NOTCH"
+
+
+class Pipeline(StrEnum):
+    """Pipeline type."""
+
+    DSP = "DSP"
+    DIRECT = "DIRECT"
 
 
 @dataclass
@@ -268,3 +287,59 @@ class Update(DataClassORJSONMixin):
         metadata=field_options(alias="update_available"), default=False
     )
     updating: bool = field(metadata=field_options(alias="updating"), default=False)
+
+
+@dataclass
+class EQBand(DataClassORJSONMixin):
+    """Represents a single EQ band."""
+
+    index: int = field(metadata=field_options(alias="index"))
+    filter: EQFilterType = field(metadata=field_options(alias="filter"))
+    freq: int = field(metadata=field_options(alias="freq"))
+    gain: float = field(metadata=field_options(alias="gain"))
+    q: float = field(metadata=field_options(alias="q"))
+
+
+@dataclass
+class UserEQ(DataClassORJSONMixin):
+    """Represents user EQ settings."""
+
+    enabled: bool = field(metadata=field_options(alias="enabled"))
+    bands: list[EQBand] = field(
+        metadata=field_options(alias="bands"), default_factory=list
+    )
+
+
+@dataclass
+class TiltEQ(DataClassORJSONMixin):
+    """Represents tilt EQ settings."""
+
+    enabled: bool = field(metadata=field_options(alias="enabled"))
+    intensity: int = field(metadata=field_options(alias="intensity"))
+
+
+@dataclass
+class Audio(DataClassORJSONMixin):
+    """Represents audio settings including EQ and balance."""
+
+    digital_filter: Optional[str] = field(
+        metadata=field_options(alias="digital_filter"), default=None
+    )
+    phase_invert: Optional[bool] = field(
+        metadata=field_options(alias="phase_invert"), default=None
+    )
+    volume_limit_percent: Optional[int] = field(
+        metadata=field_options(alias="volume_limit_percent"), default=None
+    )
+    tilt_eq: Optional[TiltEQ] = field(
+        metadata=field_options(alias="tilt_eq"), default=None
+    )
+    user_eq: Optional[UserEQ] = field(
+        metadata=field_options(alias="user_eq"), default=None
+    )
+    balance: Optional[int] = field(
+        metadata=field_options(alias="balance"), default=None
+    )
+    pipeline: Optional[Pipeline] = field(
+        metadata=field_options(alias="pipeline"), default=None
+    )
