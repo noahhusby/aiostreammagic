@@ -13,7 +13,7 @@ permissions:
   actions: read
 
 env:
-  PYTHON_VERSION: 3.11
+  PYTHON_VERSION: 3.14
 
 jobs:
   deploy:
@@ -22,11 +22,11 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: 🏗 Set up Poetry
         run: pipx install poetry
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: ${{ env.PYTHON_VERSION }}
           cache: "poetry"
@@ -40,7 +40,7 @@ jobs:
       - name: Setup Pages
         uses: actions/configure-pages@v5
       - name: Upload artifact
-        uses: actions/upload-pages-artifact@v3
+        uses: actions/upload-pages-artifact@v4
         with:
           path: 'docs/'
       - name: Deploy to GitHub Pages
