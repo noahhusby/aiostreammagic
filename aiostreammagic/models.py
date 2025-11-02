@@ -296,10 +296,12 @@ class EQBand(DataClassORJSONMixin):
     """Represents a single EQ band."""
 
     index: int = field(metadata=field_options(alias="index"))
-    filter: EQFilterType = field(metadata=field_options(alias="filter"))
-    freq: int = field(metadata=field_options(alias="freq"))
-    gain: float = field(metadata=field_options(alias="gain"))
-    q: float = field(metadata=field_options(alias="q"))
+    filter: Optional[EQFilterType] = field(
+        metadata=field_options(alias="filter"), default=None
+    )
+    freq: Optional[int] = field(metadata=field_options(alias="freq"), default=None)
+    gain: Optional[float] = field(metadata=field_options(alias="gain"), default=None)
+    q: Optional[float] = field(metadata=field_options(alias="q"), default=None)
 
 
 @dataclass
