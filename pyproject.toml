@@ -14,7 +14,7 @@ readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
     "yarl>=1.20.1",
-    "mashumaro>=3.16",
+    "mashumaro>=3.17",
     "orjson>=3.11.0",
     "aiohttp>=3.12.14",
     "packaging>=25.0"
@@ -30,11 +30,11 @@ dev = [
     "mypy==1.18.2",
     "pytest==8.4.2",
     "pytest-asyncio==1.2.0",
-    "pytest-cov==6.2.1",
-    "ruff==0.13.3"
+    "pytest-cov==7.0.0",
+    "ruff==0.14.2"
 ]
 docs = [
-    "pdoc>=14.7,<16.0"
+    "pdoc>=14.7,<17.0"
 ]
 
 [tool.mypy]
