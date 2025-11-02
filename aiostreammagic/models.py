@@ -74,12 +74,14 @@ class StandbyMode(StrEnum):
 class EQFilterType(StrEnum):
     """EQ filter type."""
 
-    LOWSHELF = "LOWSHELF"
+    PASSTHROUGH = "PASSTHROUGH"
     PEAKING = "PEAKING"
+    LOWSHELF = "LOWSHELF"
     HIGHSHELF = "HIGHSHELF"
-    LOWPASS = "LOWPASS"
-    HIGHPASS = "HIGHPASS"
     NOTCH = "NOTCH"
+    HIGHPASS = "HIGHPASS"
+    LOWPASS = "LOWPASS"
+    ALLPASS = "ALLPASS"
 
 
 class Pipeline(StrEnum):
@@ -311,7 +313,7 @@ class UserEQ(DataClassORJSONMixin):
 
     def to_param_string(self) -> str:
         # Format and encode as required by the API
-        def fmt(val, float_fmt=None):
+        def fmt(val: object, float_fmt: Optional[str] = None) -> str:
             if val is None:
                 return ""
             if float_fmt and isinstance(val, float):
