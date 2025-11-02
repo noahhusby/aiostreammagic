@@ -75,15 +75,10 @@ curl "http://<DEVICE_IP>/smoip/zone/audio?zone=ZONE1"
 
 ## Volume Limitation
 
-> ⚠️ **Attention:**
->
-> The API endpoint for the volume limit seems to have changed with the latest update.
-> It used to be `/zone/state`.
-
 From the Cambridge Audio documentation: This sets the maximum volume that other streaming services like AirPlay, Spotify, TIDAL Connect and Google Cast can set. The front panel, remote control and StreamMagic app volume controls can override this setting.
 
 ```bash
-# Set volume limit (0-100%)
+# Set volume limit (1-100%)
 curl "http://<DEVICE_IP>/smoip/zone/audio?volume_limit_percent=<value>"
 ```
 
@@ -102,7 +97,7 @@ Value range is -15 to 15.
 # Slight right channel emphasis
 curl "http://<DEVICE_IP>/smoip/zone/audio?balance=3"
 
-# Strong left channel emphasis  
+# Strong left channel emphasis
 curl "http://<DEVICE_IP>/smoip/zone/audio?balance=-8"
 ```
 
@@ -139,7 +134,8 @@ To change multiple bands at once separate the parameters for each band with a `|
 user_eq_bands=[index],[filter],[freq],[gain],[q]|1,[filter],[freq],[gain],[q]|2,[filter],[freq],[gain],[q]|3,[filter],[freq],[gain],[q]|4,[filter],[freq],[gain],[q]|5,[filter],[freq],[gain],[q]|6,[filter],[freq],[gain],[q]
 ```
 
-> ℹ️ Special characters should be encoded for URLs:
+> [!NOTE]
+> It might be necessary to encode special characters for URLs:
 >
 > - `,` becomes `%2C`
 > - `|` becomes `%7C`
@@ -147,12 +143,10 @@ user_eq_bands=[index],[filter],[freq],[gain],[q]|1,[filter],[freq],[gain],[q]|2,
 #### Parameters
 
 - `index`: Band number (0-6)
-- `filter`: Filter type (LOWSHELF, PEAKING, HIGHSHELF, LOWPASS, HIGHPASS, NOTCH)
+- `filter`: Filter type (PASSTHROUGH, PEAKING, LOWSHELF, HIGHSHELF, NOTCH, HIGHPASS, LOWPASS, ALLPASS)
 - `freq`: Frequency in Hz (20 Hz to 20 kHz)
 - `gain`: Gain in dB (-6 dB to 3 dB)
 - `q`: Q factor (API seems to accept any value (0-100 confirmed), but a range from 0.1 to 10 seems reasonable)
-
-**Note**: Filter type modification requires further testing to confirm supported values.
 
 #### Parameter Modification Rules
 
@@ -164,7 +158,7 @@ user_eq_bands=[index],[filter],[freq],[gain],[q]|1,[filter],[freq],[gain],[q]|2,
 ### Default Values
 
 - **Band 0**: 80Hz (LOWSHELF, Q=0.8) - Sub-bass
-- **Band 1**: 120Hz (PEAKING, Q=1.24) - Bass  
+- **Band 1**: 120Hz (PEAKING, Q=1.24) - Bass
 - **Band 2**: 315Hz (PEAKING, Q=1.24) - Low-mid
 - **Band 3**: 800Hz (PEAKING, Q=1.24) - Mid
 - **Band 4**: 2000Hz (PEAKING, Q=1.24) - Upper-mid
@@ -219,49 +213,21 @@ The presets available in the StreamMagic app will only change the gains for each
 | **Movie** | 0.0 | +1.4 | -0.4 | -2.0 | -0.6 | +0.6 | +1.1 | Scooped mids with bass/treble emphasis - classic cinema "smile curve" for immersive sound |
 | **Gaming** | +3.0 | +3.0 | +1.0 | -1.0 | -1.0 | +0.6 | -0.2 | Strong bass boost with scooped mids - enhanced impact sounds - very similar to bass boost |
 
-##### API Commands for All Presets
-
-```bash
-# Normal/Flat
-curl "http://<DEVICE_IP>/smoip/zone/audio?user_eq_bands=0%2C%2C%2C0.0%2C%7C1%2C%2C%2C0.0%2C%7C2%2C%2C%2C0.0%2C%7C3%2C%2C%2C0.0%2C%7C4%2C%2C%2C0.0%2C%7C5%2C%2C%2C0.0%2C%7C6%2C%2C%2C0.0%2C"
-
-# Bass Boost
-curl "http://<DEVICE_IP>/smoip/zone/audio?user_eq_bands=0%2C%2C%2C3.0%2C%7C1%2C%2C%2C3.0%2C%7C2%2C%2C%2C1.0%2C%7C3%2C%2C%2C0.0%2C%7C4%2C%2C%2C-1.0%2C%7C5%2C%2C%2C-0.5%2C%7C6%2C%2C%2C-0.3%2C"
-
-# Bass Reduction 
-curl "http://<DEVICE_IP>/smoip/zone/audio?user_eq_bands=0%2C%2C%2C-4.6%2C%7C1%2C%2C%2C-1.8%2C%7C2%2C%2C%2C-0.6%2C%7C3%2C%2C%2C0.0%2C%7C4%2C%2C%2C0.6%2C%7C5%2C%2C%2C0.4%2C%7C6%2C%2C%2C0.0%2C"
-
-# Voice Clarity
-curl "http://<DEVICE_IP>/smoip/zone/audio?user_eq_bands=0%2C%2C%2C-6.0%2C%7C1%2C%2C%2C-3.4%2C%7C2%2C%2C%2C3.0%2C%7C3%2C%2C%2C3.0%2C%7C4%2C%2C%2C3.0%2C%7C5%2C%2C%2C2.2%2C%7C6%2C%2C%2C-1.4%2C"
-
-# Treble Boost
-curl "http://<DEVICE_IP>/smoip/zone/audio?user_eq_bands=0%2C%2C%2C0.0%2C%7C1%2C%2C%2C0.0%2C%7C2%2C%2C%2C0.0%2C%7C3%2C%2C%2C0.0%2C%7C4%2C%2C%2C0.6%2C%7C5%2C%2C%2C1.8%2C%7C6%2C%2C%2C3.0%2C"
-
-# Treble Reduction
-curl "http://<DEVICE_IP>/smoip/zone/audio?user_eq_bands=0%2C%2C%2C0.0%2C%7C1%2C%2C%2C0.0%2C%7C2%2C%2C%2C0.0%2C%7C3%2C%2C%2C0.0%2C%7C4%2C%2C%2C0.0%2C%7C5%2C%2C%2C-1.2%2C%7C6%2C%2C%2C-4.2%2C"
-
-# TV
-curl "http://<DEVICE_IP>/smoip/zone/audio?user_eq_bands=0%2C%2C%2C-1.9%2C%7C1%2C%2C%2C-0.8%2C%7C2%2C%2C%2C1.0%2C%7C3%2C%2C%2C1.0%2C%7C4%2C%2C%2C0.8%2C%7C5%2C%2C%2C0.0%2C%7C6%2C%2C%2C-0.8%2C"
-
-# Movie
-curl "http://<DEVICE_IP>/smoip/zone/audio?user_eq_bands=0%2C%2C%2C0.0%2C%7C1%2C%2C%2C1.4%2C%7C2%2C%2C%2C-0.4%2C%7C3%2C%2C%2C-2.0%2C%7C4%2C%2C%2C-0.6%2C%7C5%2C%2C%2C0.6%2C%7C6%2C%2C%2C1.1%2C"
-
-# Gaming
-curl "http://<DEVICE_IP>/smoip/zone/audio?user_eq_bands=0%2C%2C%2C3.0%2C%7C1%2C%2C%2C3.0%2C%7C2%2C%2C%2C1.0%2C%7C3%2C%2C%2C-1.0%2C%7C4%2C%2C%2C-1.0%2C%7C5%2C%2C%2C0.6%2C%7C6%2C%2C%2C-0.2%2C"
-```
-
 #### Custom Preset Examples
 
-##### Balanced Hi-Fi
+| Preset | 80Hz | 120Hz | 315Hz | 800Hz | 2kHz | 5kHz | 8kHz |
+|---------------------|--------|--------|--------|--------|--------|--------|--------|
+| Balanced Hi-Fi      | 1.0    | 0.5    | 0.0    | 0.0    | 0.0    | 0.5    | 1.0    |
+| Podcast Optimized   | -3.0   | -1.0   | 2.0    | 2.5    | 2.0    | 1.0    | -2.0   |
 
 ```bash
-curl "http://<DEVICE_IP>/smoip/zone/audio?user_eq_bands=0%2C%2C%2C1.0%2C%7C1%2C%2C%2C0.5%2C%7C2%2C%2C%2C0.0%2C%7C3%2C%2C%2C0.0%2C%7C4%2C%2C%2C0.0%2C%7C5%2C%2C%2C0.5%2C%7C6%2C%2C%2C1.0%2C"
+# Balanced Hi-Fi
+curl "http://<DEVICE_IP>/smoip/zone/audio?user_eq_bands=0,,,1.0,|1,,,0.5,|2,,,0.0,|3,,,0.0,|4,,,0.0,|5,,,0.5,|6,,,1.0,"
 ```
 
-##### Podcast Optimized
-
 ```bash
-curl "http://<DEVICE_IP>/smoip/zone/audio?user_eq_bands=0%2C%2C%2C-3.0%2C%7C1%2C%2C%2C-1.0%2C%7C2%2C%2C%2C2.0%2C%7C3%2C%2C%2C2.5%2C%7C4%2C%2C%2C2.0%2C%7C5%2C%2C%2C1.0%2C%7C6%2C%2C%2C-2.0%2C"
+# Podcast Optimized
+curl "http://<DEVICE_IP>/smoip/zone/audio?user_eq_bands=0,,,-3.0,|1,,,-1.0,|2,,,2.0,|3,,,2.5,|4,,,2.0,|5,,,1.0,|6,,,-2.0,"
 ```
 
 ## Room Compensation (Tilt EQ)
