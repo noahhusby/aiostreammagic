@@ -37,6 +37,7 @@ class RepeatMode(StrEnum):
 
     OFF = "off"
     ALL = "all"
+    ONE = "one"
     TOGGLE = "toggle"
 
 
