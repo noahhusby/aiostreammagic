@@ -40,31 +40,26 @@ If your model is not on the list of supported devices, and everything works corr
 pip install aiostreammagic
 ```
 
-# Examples
+# Usage
 
 ## Basic Example
 
 ```python
 import asyncio
 
-from aiostreammagic import StreamMagicClient, Source, Info
+from aiostreammagic import StreamMagicClient
 
 HOST = "192.168.20.218"
 
 
 async def main():
     """Basic demo entrypoint."""
-    client = StreamMagicClient(HOST)
-    await client.connect()
+    async with StreamMagicClient(HOST) as client:
 
-    info: Info = await client.get_info()
-    sources: list[Source] = await client.get_sources()
+        print(f"Model: {client.info.model}")
 
-    print(f"Model: {info.model}")
-    for source in sources:
-        print(f"Name: {source.id} ({source.id})")
-
-    await client.disconnect()
+        for source in client.sources:
+            print(f"Name: {source.id} ({source.id})")
 
 if __name__ == '__main__':
     asyncio.run(main())
@@ -84,11 +79,11 @@ HOST = "192.168.20.218"
 
 async def on_state_change(client: StreamMagicClient):
     """Called when new information is received."""
-    print(f"System info: {client.get_info()}")
-    print(f"Sources: {client.get_sources()}")
-    print(f"State: {client.get_state()}")
-    print(f"Play State: {client.get_play_state()}")
-    print(f"Now Playing: {client.get_now_playing()}")
+    print(f"System info: {client.info}")
+    print(f"Sources: {client.sources}")
+    print(f"State: {client.state}")
+    print(f"Play State: {client.play_state}")
+    print(f"Now Playing: {client.now_playing}")
 
 async def main():
     """Subscribe demo entrypoint."""
@@ -104,6 +99,51 @@ async def main():
 
 if __name__ == '__main__':
     asyncio.run(main())
+```
+
+## Advanced Audio Settings
+
+### Balance
+
+Adjust left/right speaker balance (requires pre-amp mode):
+
+```python
+async with StreamMagicClient(HOST) as client:
+    await client.set_pre_amp_mode(True)
+    await client.set_balance(-5)  # Range: -15 (left) to 15 (right)
+```
+
+### Room Correction
+
+Enable and adjust tilt EQ for room acoustics (negative values add warmth for bright/hard-surfaced rooms, positive values add brightness for soft/damped rooms):
+
+```python
+async with StreamMagicClient(HOST) as client:
+    await client.set_room_correction_mode(True)
+    await client.set_room_correction_intensity(8)  # Range: -15 to 15
+```
+
+### Equalizer
+
+Configure the 7-band parametric equalizer (bands 0-6 at 80, 120, 315, 800, 2000, 5000, 8000 Hz):
+
+```python
+from aiostreammagic import EQBand, UserEQ
+
+async with StreamMagicClient(HOST) as client:
+    # Enable equalizer
+    await client.set_equalizer_mode(True)
+
+    # Adjust individual bands (0-6)
+    await client.set_equalizer_band_gain(3, 2.5)  # Band 3, +2.5 dB, Range: -6 to +3
+
+    # Set all bands at once (Balanced Hi-Fi preset)
+    gains = [1.0, 0.5, 0.0, 0.0, 0.0, 0.5, 1.0]
+    bands = [EQBand(index=i, gain=gains[i]) for i in range(7)]
+    await client.set_equalizer_params(UserEQ(enabled=True, bands=bands))
+
+    # Reset to defaults
+    await client.set_equalizer_defaults()
 ```
 
 [license-shield]: https://img.shields.io/github/license/noahhusby/aiostreammagic.svg

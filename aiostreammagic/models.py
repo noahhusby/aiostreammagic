@@ -75,12 +75,14 @@ class StandbyMode(StrEnum):
 class EQFilterType(StrEnum):
     """EQ filter type."""
 
-    LOWSHELF = "LOWSHELF"
+    PASSTHROUGH = "PASSTHROUGH"
     PEAKING = "PEAKING"
+    LOWSHELF = "LOWSHELF"
     HIGHSHELF = "HIGHSHELF"
-    LOWPASS = "LOWPASS"
-    HIGHPASS = "HIGHPASS"
     NOTCH = "NOTCH"
+    HIGHPASS = "HIGHPASS"
+    LOWPASS = "LOWPASS"
+    ALLPASS = "ALLPASS"
 
 
 class Pipeline(StrEnum):
@@ -295,10 +297,12 @@ class EQBand(DataClassORJSONMixin):
     """Represents a single EQ band."""
 
     index: int = field(metadata=field_options(alias="index"))
-    filter: EQFilterType = field(metadata=field_options(alias="filter"))
-    freq: int = field(metadata=field_options(alias="freq"))
-    gain: float = field(metadata=field_options(alias="gain"))
-    q: float = field(metadata=field_options(alias="q"))
+    filter: Optional[EQFilterType] = field(
+        metadata=field_options(alias="filter"), default=None
+    )
+    freq: Optional[int] = field(metadata=field_options(alias="freq"), default=None)
+    gain: Optional[float] = field(metadata=field_options(alias="gain"), default=None)
+    q: Optional[float] = field(metadata=field_options(alias="q"), default=None)
 
 
 @dataclass
@@ -309,6 +313,21 @@ class UserEQ(DataClassORJSONMixin):
     bands: list[EQBand] = field(
         metadata=field_options(alias="bands"), default_factory=list
     )
+
+    def to_param_string(self) -> str:
+        # Format and encode as required by the API
+        def fmt(val: object, float_fmt: Optional[str] = None) -> str:
+            if val is None:
+                return ""
+            if float_fmt and isinstance(val, float):
+                return float_fmt.format(val)
+            return str(val)
+
+        param_str = "|".join(
+            f"{fmt(band.index)},{fmt(band.filter)},{fmt(band.freq)},{fmt(band.gain, '{:.1f}')},{fmt(band.q, '{:.2f}')}"
+            for band in self.bands
+        )
+        return param_str
 
 
 @dataclass
