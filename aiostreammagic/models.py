@@ -92,6 +92,27 @@ class Pipeline(StrEnum):
     DIRECT = "DIRECT"
 
 
+# EQ constants
+EQ_GAIN_MIN = -6.0
+EQ_GAIN_MAX = 3.0
+EQ_NUM_BANDS = 7
+
+# EQ preset definitions from the official StreamMagic app
+# Each preset contains 7 gain values (dB) for bands 0-6
+# Gain range is limited to -6.0 to +3.0 dB
+EQ_PRESETS: dict[str, list[float]] = {
+    "flat": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+    "bass_boost": [3.0, 3.0, 1.0, 0.0, -1.0, -0.5, -0.3],
+    "bass_reduction": [-4.6, -1.8, -0.6, 0.0, 0.6, 0.4, 0.0],
+    "voice_clarity": [-6.0, -3.4, 3.0, 3.0, 3.0, 2.2, -1.4],
+    "treble_boost": [0.0, 0.0, 0.0, 0.0, 0.6, 1.8, 3.0],
+    "treble_reduction": [0.0, 0.0, 0.0, 0.0, 0.0, -1.2, -4.2],
+    "tv": [-1.9, -0.8, 1.0, 1.0, 0.8, 0.0, -0.8],
+    "movie": [0.0, 1.4, -0.4, -2.0, -0.6, 0.6, 1.1],
+    "gaming": [3.0, 3.0, 1.0, -1.0, -1.0, 0.6, -0.2],
+}
+
+
 @dataclass
 class Info(DataClassORJSONMixin):
     """Cambridge Audio device metadata."""
@@ -314,8 +335,58 @@ class UserEQ(DataClassORJSONMixin):
         metadata=field_options(alias="bands"), default_factory=list
     )
 
+    @classmethod
+    def from_gains(cls, gains: list[float], enabled: bool = True) -> UserEQ:
+        """Create a UserEQ instance from a list of gain values.
+
+        Args:
+            gains: List of gain values in dB for each band (length should be EQ_NUM_BANDS)
+            enabled: Whether to enable EQ (default: True)
+
+        Returns:
+            UserEQ instance with bands configured with the specified gains
+
+        Example:
+            >>> eq = UserEQ.from_gains([1.0, 0.5, 0.0, 0.0, 0.0, 0.5, 1.0])
+        """
+        bands = [EQBand(index=i, gain=gain) for i, gain in enumerate(gains)]
+        return cls(enabled=enabled, bands=bands)
+
+    @classmethod
+    def from_preset(cls, preset_name: str, enabled: bool = True) -> UserEQ:
+        """Create a UserEQ instance from a preset name.
+
+        Args:
+            preset_name: Name of the preset from EQ_PRESETS
+            enabled: Whether to enable EQ (default: True)
+
+        Returns:
+            UserEQ instance with bands configured for the preset
+
+        Raises:
+            ValueError: If preset_name is not found in EQ_PRESETS
+
+        Example:
+            >>> eq = UserEQ.from_preset("bass_boost")
+        """
+        if preset_name not in EQ_PRESETS:
+            raise ValueError(
+                f"Unknown preset '{preset_name}'. "
+                f"Available presets: {', '.join(EQ_PRESETS.keys())}"
+            )
+
+        return cls.from_gains(EQ_PRESETS[preset_name], enabled=enabled)
+
     def to_param_string(self) -> str:
-        # Format and encode as required by the API
+        """Convert EQ bands to API parameter string format.
+
+        Formats the EQ bands into a pipe-separated string where each band
+        is represented as comma-separated values: index,filter,freq,gain,q
+
+        Returns:
+            Formatted parameter string (e.g., "0,,,2.5,|1,,,1.0,")
+        """
+
         def fmt(val: object, float_fmt: Optional[str] = None) -> str:
             if val is None:
                 return ""
