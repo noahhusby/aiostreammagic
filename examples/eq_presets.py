@@ -6,6 +6,9 @@ from aiostreammagic import (
     StreamMagicClient,
     UserEQ,
     EQ_PRESETS,
+    EQ_GAIN_MIN,
+    EQ_GAIN_MAX,
+    EQ_NUM_BANDS,
 )
 
 
@@ -23,12 +26,24 @@ async def main() -> None:
     # Set EQ using a preset
     async with StreamMagicClient("192.168.1.100") as client:
         try:
-            # Use the from_preset helper (recommended)
+            # Method 1: Use from_preset (easiest)
             eq_settings = UserEQ.from_preset("bass_boost", enabled=True)
             await client.set_equalizer_params(eq_settings)
             print("\nApplied bass_boost preset")
+
+            # Method 2: Use from_gains for custom EQ
+            custom_gains = [1.0, 0.5, 0.0, 0.0, 0.0, 0.5, 1.0]
+            custom_eq = UserEQ.from_gains(custom_gains)
+            await client.set_equalizer_params(custom_eq)
+            print("Applied custom EQ gains")
+
         except ValueError as e:
-            print(f"\nError handling example: {e}")
+            print(f"\nError: {e}")
+
+    # Show EQ constraints
+    print("\nEQ constraints:")
+    print(f"  - Number of bands: {EQ_NUM_BANDS}")
+    print(f"  - Gain range: {EQ_GAIN_MIN} to {EQ_GAIN_MAX} dB")
 
 
 if __name__ == "__main__":
