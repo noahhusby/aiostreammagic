@@ -24,7 +24,7 @@ async def main() -> None:
     print(f"\nBass boost gains: {bass_boost_gains}")
 
     # Set EQ using a preset
-    async with StreamMagicClient("192.168.1.100") as client:
+    async with StreamMagicClient("192.168.x.x") as client:
         try:
             # Method 1: Use from_preset (easiest)
             eq_settings = UserEQ.from_preset("bass_boost", enabled=True)
