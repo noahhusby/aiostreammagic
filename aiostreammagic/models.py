@@ -340,15 +340,20 @@ class UserEQ(DataClassORJSONMixin):
         """Create a UserEQ instance from a list of gain values.
 
         Args:
-            gains: List of gain values in dB for each band (length should be EQ_NUM_BANDS)
+            gains: List of gain values in dB for each band (must have exactly EQ_NUM_BANDS values)
             enabled: Whether to enable EQ (default: True)
 
         Returns:
             UserEQ instance with bands configured with the specified gains
 
-        Example:
-            >>> eq = UserEQ.from_gains([1.0, 0.5, 0.0, 0.0, 0.0, 0.5, 1.0])
+        Raises:
+            ValueError: If gains list length is not EQ_NUM_BANDS
         """
+        if len(gains) != EQ_NUM_BANDS:
+            raise ValueError(
+                f"Expected {EQ_NUM_BANDS} gain values, got {len(gains)}. "
+                f"Each EQ band (0-{EQ_NUM_BANDS - 1}) requires a gain value."
+            )
         bands = [EQBand(index=i, gain=gain) for i, gain in enumerate(gains)]
         return cls(enabled=enabled, bands=bands)
 
@@ -365,9 +370,6 @@ class UserEQ(DataClassORJSONMixin):
 
         Raises:
             ValueError: If preset_name is not found in EQ_PRESETS
-
-        Example:
-            >>> eq = UserEQ.from_preset("bass_boost")
         """
         if preset_name not in EQ_PRESETS:
             raise ValueError(
