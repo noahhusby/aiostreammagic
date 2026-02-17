@@ -92,9 +92,6 @@ class Pipeline(StrEnum):
     DIRECT = "DIRECT"
 
 
-# EQ constants
-EQ_NUM_BANDS = 7
-
 # EQ preset definitions from the official StreamMagic app
 # Each preset contains 7 gain values (dB) for bands 0-6
 # Gain range is limited to -6.0 to +3.0 dB
