@@ -26,10 +26,10 @@ from aiostreammagic.models import (
     ControlBusMode,
     StandbyMode,
     Audio,
-    UserEQ,
     EQBand,
     EQFilterType,
 )
+from aiostreammagic.util import eq_bands_to_param_string
 from . import endpoints as ep
 from .const import _LOGGER
 
@@ -652,8 +652,7 @@ class StreamMagicClient:
         if self.audio.user_eq is None:
             raise StreamMagicError("Equalizer is not supported on this device")
         band = EQBand(index=band_index, filter=filter_type)
-        eq = UserEQ(enabled=self.audio.user_eq.enabled, bands=[band])
-        await self.set_equalizer_params(eq)
+        await self.set_equalizer_params([band])
 
     async def set_equalizer_band_frequency(
         self, band_index: int, frequency: int
@@ -664,8 +663,7 @@ class StreamMagicClient:
         if not 20 <= frequency <= 20000:
             raise StreamMagicError("Frequency must be between 20 Hz and 20 kHz")
         band = EQBand(index=band_index, freq=frequency)
-        eq = UserEQ(enabled=self.audio.user_eq.enabled, bands=[band])
-        await self.set_equalizer_params(eq)
+        await self.set_equalizer_params([band])
 
     async def set_equalizer_band_gain(self, band_index: int, gain: float) -> None:
         """Sets the gain for a specific equalizer band."""
@@ -674,8 +672,7 @@ class StreamMagicClient:
         if not -6 <= gain <= 3:
             raise StreamMagicError("Gain must be between -6 dB and 3 dB")
         band = EQBand(index=band_index, gain=gain)
-        eq = UserEQ(enabled=self.audio.user_eq.enabled, bands=[band])
-        await self.set_equalizer_params(eq)
+        await self.set_equalizer_params([band])
 
     async def set_equalizer_band_q_factor(self, band_index: int, q: float) -> None:
         """Sets the Q factor for a specific equalizer band."""
@@ -684,8 +681,7 @@ class StreamMagicClient:
         if not 0.1 <= q <= 10:
             raise StreamMagicError("Q factor must be between 0.1 and 10")
         band = EQBand(index=band_index, q=q)
-        eq = UserEQ(enabled=self.audio.user_eq.enabled, bands=[band])
-        await self.set_equalizer_params(eq)
+        await self.set_equalizer_params([band])
 
     async def set_equalizer_defaults(self) -> None:
         """Sets the equalizer to the default settings."""
@@ -700,16 +696,15 @@ class StreamMagicClient:
             EQBand(index=5, filter=EQFilterType.PEAKING, freq=5000, gain=0.0, q=1.24),
             EQBand(index=6, filter=EQFilterType.HIGHSHELF, freq=8000, gain=0.0, q=0.8),
         ]
-        eq = UserEQ(enabled=self.audio.user_eq.enabled, bands=bands)
-        await self.set_equalizer_params(eq)
+        await self.set_equalizer_params(bands)
 
-    async def set_equalizer_params(self, settings: UserEQ) -> None:
-        """Sets the internal equalizer to the provided settings"""
+    async def set_equalizer_params(self, bands: list[EQBand]) -> None:
+        """Sets the internal equalizer to the provided band settings"""
         if self.audio.user_eq is None:
             raise StreamMagicError("Equalizer is not supported on this device")
         await self.request(
             ep.AUDIO,
-            params={"zone": "ZONE1", "user_eq_bands": settings.to_param_string()},
+            params={"zone": "ZONE1", "user_eq_bands": eq_bands_to_param_string(bands)},
         )
 
     async def set_room_correction_mode(self, enabled: bool) -> None:

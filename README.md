@@ -8,8 +8,6 @@
 
 [![GitHub Release][releases-shield]][releases]
 [![Python Versions][python-versions-shield]][pypi]
-[![Downloads][downloads-shield]][pypi]
-![Project Maintenance][maintenance-shield]
 [![License][license-shield]](LICENSE.md)
 
 </div>
@@ -147,7 +145,8 @@ async with StreamMagicClient(HOST) as client:
 
     # Set custom gains for all bands
     gains = [1.0, 0.5, 0.0, 0.0, 0.0, 0.5, 1.0]
-    await client.set_equalizer_params(UserEQ.from_gains(gains))
+    bands = [EQBand(index=i, gain=gains[i]) for i in range(7)]
+    await client.set_equalizer_params(bands)
 
     # Reset to defaults
     await client.set_equalizer_defaults()
@@ -155,9 +154,7 @@ async with StreamMagicClient(HOST) as client:
 
 [license-shield]: https://img.shields.io/github/license/noahhusby/aiostreammagic.svg
 [docs]: https://noahhusby.github.io/aiostreammagic/
-[downloads-shield]: https://img.shields.io/pypi/dm/aiostreammagic
 [python-versions-shield]: https://img.shields.io/pypi/pyversions/aiostreammagic
-[maintenance-shield]: https://img.shields.io/maintenance/yes/2025.svg
 [releases-shield]: https://img.shields.io/github/release/noahhusby/aiostreammagic.svg
 [releases]: https://github.com/noahhusby/aiostreammagic/releases
 [pypi]: https://pypi.org/project/aiostreammagic/
