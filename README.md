@@ -138,7 +138,7 @@ async with StreamMagicClient(HOST) as client:
     # Set all bands at once (Balanced Hi-Fi preset)
     gains = [1.0, 0.5, 0.0, 0.0, 0.0, 0.5, 1.0]
     bands = [EQBand(index=i, gain=gains[i]) for i in range(7)]
-    await client.set_equalizer_params(UserEQ(enabled=True, bands=bands))
+    await client.set_equalizer_params(bands)
 
     # Reset to defaults
     await client.set_equalizer_defaults()
