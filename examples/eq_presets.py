@@ -4,7 +4,7 @@ import asyncio
 
 from aiostreammagic import (
     StreamMagicClient,
-    UserEQ,
+    EQBand,
     EQ_PRESETS,
 )
 
@@ -20,18 +20,17 @@ async def main() -> None:
     bass_boost_gains = EQ_PRESETS["bass_boost"]
     print(f"\nBass boost gains: {bass_boost_gains}")
 
-    # Set EQ using a preset
+    # Set EQ using presets and custom values
     async with StreamMagicClient("192.168.x.x") as client:
         try:
-            # Method 1: Use from_preset (easiest)
-            eq_settings = UserEQ.from_preset("bass_boost", enabled=True)
-            await client.set_equalizer_params(eq_settings)
+            # Method 1: Use set_equalizer_preset (easiest)
+            await client.set_equalizer_preset("bass_boost")
             print("\nApplied bass_boost preset")
 
-            # Method 2: Use from_gains for custom EQ
+            # Method 2: Build custom EQ from gains
             custom_gains = [1.0, 0.5, 0.0, 0.0, 0.0, 0.5, 1.0]
-            custom_eq = UserEQ.from_gains(custom_gains)
-            await client.set_equalizer_params(custom_eq)
+            bands = [EQBand(index=i, gain=gain) for i, gain in enumerate(custom_gains)]
+            await client.set_equalizer_params(bands)
             print("Applied custom EQ gains")
 
         except ValueError as e:
