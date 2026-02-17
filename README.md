@@ -132,13 +132,10 @@ async with StreamMagicClient(HOST) as client:
     # Enable equalizer
     await client.set_equalizer_mode(True)
 
-    # Apply a preset (easiest method)
+    # Apply a preset ('flat', 'bass_boost', 'bass_reduction',
+    # 'voice_clarity', 'treble_boost', 'treble_reduction', 'tv',
+    # 'movie', 'gaming')
     await client.set_equalizer_preset("bass_boost")
-
-    # Available presets
-    print(list(EQ_PRESETS.keys()))
-    # ['flat', 'bass_boost', 'bass_reduction', 'voice_clarity',
-    #  'treble_boost', 'treble_reduction', 'tv', 'movie', 'gaming']
 
     # Adjust individual bands (0-6)
     await client.set_equalizer_band_gain(3, 2.5)  # Band 3, +2.5 dB, Range: -6 to +3
