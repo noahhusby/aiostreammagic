@@ -6,9 +6,6 @@ from aiostreammagic import (
     StreamMagicClient,
     UserEQ,
     EQ_PRESETS,
-    EQ_GAIN_MIN,
-    EQ_GAIN_MAX,
-    EQ_NUM_BANDS,
 )
 
 
@@ -39,11 +36,6 @@ async def main() -> None:
 
         except ValueError as e:
             print(f"\nError: {e}")
-
-    # Show EQ constraints
-    print("\nEQ constraints:")
-    print(f"  - Number of bands: {EQ_NUM_BANDS}")
-    print(f"  - Gain range: {EQ_GAIN_MIN} to {EQ_GAIN_MAX} dB")
 
 
 if __name__ == "__main__":

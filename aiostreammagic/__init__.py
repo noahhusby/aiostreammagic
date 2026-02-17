@@ -19,9 +19,6 @@ from .models import (
     EQFilterType,
     Audio,
     EQ_PRESETS,
-    EQ_GAIN_MIN,
-    EQ_GAIN_MAX,
-    EQ_NUM_BANDS,
 )
 from .stream_magic import StreamMagicClient
 
@@ -44,7 +41,4 @@ __all__ = [
     "EQFilterType",
     "Audio",
     "EQ_PRESETS",
-    "EQ_GAIN_MIN",
-    "EQ_GAIN_MAX",
-    "EQ_NUM_BANDS",
 ]

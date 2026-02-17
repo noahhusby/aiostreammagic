@@ -93,8 +93,6 @@ class Pipeline(StrEnum):
 
 
 # EQ constants
-EQ_GAIN_MIN = -6.0
-EQ_GAIN_MAX = 3.0
 EQ_NUM_BANDS = 7
 
 # EQ preset definitions from the official StreamMagic app
