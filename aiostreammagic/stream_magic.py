@@ -29,24 +29,9 @@ from aiostreammagic.models import (
     EQBand,
     EQFilterType,
 )
+from aiostreammagic.util import eq_bands_to_param_string
 from . import endpoints as ep
 from .const import _LOGGER
-
-
-def _eq_bands_to_param_string(bands: list[EQBand]) -> str:
-    """Format EQ bands as required by the API."""
-
-    def fmt(val: object, float_fmt: Optional[str] = None) -> str:
-        if val is None:
-            return ""
-        if float_fmt and isinstance(val, float):
-            return float_fmt.format(val)
-        return str(val)
-
-    return "|".join(
-        f"{fmt(band.index)},{fmt(band.filter)},{fmt(band.freq)},{fmt(band.gain, '{:.1f}')},{fmt(band.q, '{:.2f}')}"
-        for band in bands
-    )
 
 
 class StreamMagicClient:
@@ -719,7 +704,7 @@ class StreamMagicClient:
             raise StreamMagicError("Equalizer is not supported on this device")
         await self.request(
             ep.AUDIO,
-            params={"zone": "ZONE1", "user_eq_bands": _eq_bands_to_param_string(bands)},
+            params={"zone": "ZONE1", "user_eq_bands": eq_bands_to_param_string(bands)},
         )
 
     async def set_room_correction_mode(self, enabled: bool) -> None:
