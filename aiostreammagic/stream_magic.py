@@ -28,6 +28,7 @@ from aiostreammagic.models import (
     Audio,
     EQBand,
     EQFilterType,
+    EQ_PRESETS,
 )
 from aiostreammagic.util import eq_bands_to_param_string
 from . import endpoints as ep
@@ -696,6 +697,19 @@ class StreamMagicClient:
             EQBand(index=5, filter=EQFilterType.PEAKING, freq=5000, gain=0.0, q=1.24),
             EQBand(index=6, filter=EQFilterType.HIGHSHELF, freq=8000, gain=0.0, q=0.8),
         ]
+        await self.set_equalizer_params(bands)
+
+    async def set_equalizer_preset(self, eq_preset_name: str) -> None:
+        """Sets the equalizer to a preset configuration."""
+        if self.audio.user_eq is None:
+            raise StreamMagicError("Equalizer is not supported on this device")
+        if eq_preset_name not in EQ_PRESETS:
+            available = ", ".join(sorted(EQ_PRESETS.keys()))
+            raise StreamMagicError(
+                f"Unknown preset '{eq_preset_name}'. Available presets: {available}"
+            )
+        gains = EQ_PRESETS[eq_preset_name]
+        bands = [EQBand(index=i, gain=gain) for i, gain in enumerate(gains)]
         await self.set_equalizer_params(bands)
 
     async def set_equalizer_params(self, bands: list[EQBand]) -> None:

@@ -126,16 +126,21 @@ async with StreamMagicClient(HOST) as client:
 Configure the 7-band parametric equalizer (bands 0-6 at 80, 120, 315, 800, 2000, 5000, 8000 Hz):
 
 ```python
-from aiostreammagic import EQBand, UserEQ
+from aiostreammagic import EQBand, EQ_PRESETS
 
 async with StreamMagicClient(HOST) as client:
     # Enable equalizer
     await client.set_equalizer_mode(True)
 
+    # Apply a preset ('flat', 'bass_boost', 'bass_reduction',
+    # 'voice_clarity', 'treble_boost', 'treble_reduction', 'tv',
+    # 'movie', 'gaming')
+    await client.set_equalizer_preset("bass_boost")
+
     # Adjust individual bands (0-6)
     await client.set_equalizer_band_gain(3, 2.5)  # Band 3, +2.5 dB, Range: -6 to +3
 
-    # Set all bands at once (Balanced Hi-Fi preset)
+    # Set custom gains for all bands
     gains = [1.0, 0.5, 0.0, 0.0, 0.0, 0.5, 1.0]
     bands = [EQBand(index=i, gain=gains[i]) for i in range(7)]
     await client.set_equalizer_params(bands)
