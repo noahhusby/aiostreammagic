@@ -1,6 +1,6 @@
 [project]
 name = "aiostreammagic"
-version = "2.12.1"
+version = "2.13.0"
 description = "An async python package for interfacing with Cambridge Audio / Stream Magic compatible streamers."
 authors = [
     { name = "Noah Husby", email = "32528627+noahhusby@users.noreply.github.com" }
