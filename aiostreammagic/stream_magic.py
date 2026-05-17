@@ -34,13 +34,22 @@ from aiostreammagic.util import eq_bands_to_param_string
 from . import endpoints as ep
 from .const import _LOGGER
 
+_WEBSOCKET_HEARTBEAT = 30.0
+
 
 class StreamMagicClient:
     """Client for handling connections with StreamMagic enabled devices."""
 
-    def __init__(self, host: str, session: ClientSession | None = None) -> None:
+    def __init__(
+        self,
+        host: str,
+        session: ClientSession | None = None,
+        *,
+        should_close_session: bool = True,
+    ) -> None:
         self.host = host
         self.session: Optional[ClientSession] = session
+        self._should_close_session: bool = should_close_session
         self.connection: ClientWebSocketResponse | None = None
         self.futures: dict[str, list[Future[Any]]] = {}
         self._subscriptions: dict[str, Any] = {}
@@ -119,9 +128,10 @@ class StreamMagicClient:
             task.cancel()
         await asyncio.gather(*self._subscription_tasks.values(), return_exceptions=True)
         self._subscription_tasks.clear()
-        # Properly close the aiohttp session if it was created by this client
-        if self.session is not None and not self.session.closed:
-            await self.session.close()
+        if self._should_close_session and self.session is not None:
+            if not self.session.closed:
+                await self.session.close()
+            self.session = None
 
     def is_connected(self) -> bool:
         """Return True if device is connected."""
@@ -131,12 +141,14 @@ class StreamMagicClient:
         """Establish a connection with a WebSocket."""
         if self.session is None:
             self.session = ClientSession()
+            self._should_close_session = True
         return await self.session.ws_connect(
             uri,
             headers={
                 "Origin": f"ws://{self.host}",
                 "Host": f"{self.host}:80",
             },
+            heartbeat=_WEBSOCKET_HEARTBEAT,
         )
 
     async def _reconnect_handler(self, res: Future[bool]) -> None:
