@@ -32,15 +32,22 @@ from aiostreammagic.models import (
 )
 from aiostreammagic.util import eq_bands_to_param_string
 from . import endpoints as ep
-from .const import _LOGGER
+from .const import _LOGGER, WS_HEARTBEAT_TIME
 
 
 class StreamMagicClient:
     """Client for handling connections with StreamMagic enabled devices."""
 
-    def __init__(self, host: str, session: ClientSession | None = None) -> None:
+    def __init__(
+        self,
+        host: str,
+        session: ClientSession | None = None,
+        *,
+        should_close_session: bool = True,
+    ) -> None:
         self.host = host
         self.session: Optional[ClientSession] = session
+        self._should_close_session: bool = should_close_session
         self.connection: ClientWebSocketResponse | None = None
         self.futures: dict[str, list[Future[Any]]] = {}
         self._subscriptions: dict[str, Any] = {}
@@ -120,12 +127,19 @@ class StreamMagicClient:
         await asyncio.gather(*self._subscription_tasks.values(), return_exceptions=True)
         self._subscription_tasks.clear()
         # Properly close the aiohttp session if it was created by this client
-        if self.session is not None and not self.session.closed:
-            await self.session.close()
+        if self._should_close_session and self.session is not None:
+            if not self.session.closed:
+                await self.session.close()
+            self.session = None
 
     def is_connected(self) -> bool:
         """Return True if device is connected."""
-        return self.connect_task is not None and not self.connect_task.done()
+        return (
+            self.connection is not None
+            and not self.connection.closed
+            and self.connect_task is not None
+            and not self.connect_task.done()
+        )
 
     async def _ws_connect(self, uri: str) -> ClientWebSocketResponse:
         """Establish a connection with a WebSocket."""
@@ -137,6 +151,7 @@ class StreamMagicClient:
                 "Origin": f"ws://{self.host}",
                 "Host": f"{self.host}:80",
             },
+            heartbeat=WS_HEARTBEAT_TIME,
         )
 
     async def _reconnect_handler(self, res: Future[bool]) -> None:
@@ -271,6 +286,9 @@ class StreamMagicClient:
                         subscription_queues[path].put_nowait(msg)
         except (asyncio.CancelledError,):
             pass
+        finally:
+            if self.connection is ws:
+                self.connection = None
 
     async def _send(
         self, path: str, params: Optional[dict[str, str | int | float | bool]] = None
