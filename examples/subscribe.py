@@ -1,4 +1,5 @@
 import asyncio
+import logging
 
 from aiostreammagic.stream_magic import StreamMagicClient
 from aiostreammagic.models import CallbackType
@@ -33,6 +34,7 @@ async def main() -> None:
 
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.DEBUG)
     loop = asyncio.get_event_loop()
     loop.run_until_complete(main())
     loop.close()
