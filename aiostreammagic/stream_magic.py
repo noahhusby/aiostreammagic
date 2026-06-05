@@ -112,20 +112,28 @@ class StreamMagicClient:
 
     async def disconnect(self) -> None:
         """Disconnect from StreamMagic enabled devices."""
-        if self.is_connected():
-            self._attempt_reconnection = False
-            if self.connect_task:
-                self.connect_task.cancel()
-                try:
-                    await self.connect_task
-                except asyncio.CancelledError:
-                    pass
-            await self.do_state_update_callbacks(CallbackType.CONNECTION)
+        self._attempt_reconnection = False
+
+        if self.connection is not None and not self.connection.closed:
+            await self.connection.close()
+        self.connection = None
+
+        if self._reconnect_task:
+            self._reconnect_task.cancel()
+            await asyncio.gather(self._reconnect_task, return_exceptions=True)
+            self._reconnect_task = None
+
+        if self.connect_task:
+            self.connect_task.cancel()
+            await asyncio.gather(self.connect_task, return_exceptions=True)
+            self.connect_task = None
+
         # Cancel all subscription handler tasks
         for task in self._subscription_tasks.values():
             task.cancel()
         await asyncio.gather(*self._subscription_tasks.values(), return_exceptions=True)
         self._subscription_tasks.clear()
+        await self.do_state_update_callbacks(CallbackType.CONNECTION)
         # Properly close the aiohttp session if it was created by this client
         if self._should_close_session and self.session is not None:
             if not self.session.closed:
@@ -160,9 +168,11 @@ class StreamMagicClient:
             try:
                 self.connect_task = asyncio.create_task(self._connect_handler(res))
                 await self.connect_task
-            except Exception as ex:
-                _LOGGER.error(ex)
-                pass
+            except asyncio.CancelledError:
+                raise
+            except Exception:
+                _LOGGER.exception("StreamMagic connection handler failed")
+
             await self.do_state_update_callbacks(CallbackType.CONNECTION)
             if not self._attempt_reconnection:
                 _LOGGER.debug(
@@ -230,18 +240,20 @@ class StreamMagicClient:
             subscribe_tasks = set()
             for state_update in subscribe_state_updates:
                 subscribe_tasks.add(asyncio.create_task(state_update))
-            await asyncio.wait(subscribe_tasks)
+            await asyncio.gather(*subscribe_tasks)
             self._allow_state_update = True
             await self.do_state_update_callbacks(CallbackType.CONNECTION)
 
             self._attempt_reconnection = True
             if not res.done():
                 res.set_result(True)
-            await asyncio.wait([x], return_when=asyncio.FIRST_COMPLETED)
+            await x
+        except asyncio.CancelledError:
+            raise
         except Exception as ex:
             if not res.done():
                 res.set_exception(ex)
-            _LOGGER.error(ex, exc_info=True)
+            raise
 
     @staticmethod
     async def subscription_handler(
@@ -263,32 +275,64 @@ class StreamMagicClient:
         futures: dict[str, list[asyncio.Future[Any]]],
     ) -> None:
         """Callback consumer handler."""
-        subscription_queues = {}
+        subscription_queues: dict[str, Queue[dict[str, Any]]] = {}
         try:
             async for raw_msg in ws:
-                if futures or subscriptions:
-                    _LOGGER.debug("recv(%s): %s", self.host, raw_msg)
-                    msg = json.loads(raw_msg.data)
-                    path = msg["path"]
-                    path_futures = self.futures.get(path)
-                    subscription = self._subscriptions.get(path)
-                    if path_futures and msg["type"] == "response":
-                        for future in path_futures:
-                            if not future.done():
-                                future.set_result(msg)
-                    if subscription:
-                        if path not in self._subscription_tasks:
-                            queue: Queue[dict[str, Any]] = asyncio.Queue()
-                            subscription_queues[path] = queue
-                            self._subscription_tasks[path] = asyncio.create_task(
-                                self.subscription_handler(queue, subscription)
-                            )
-                        subscription_queues[path].put_nowait(msg)
-        except (asyncio.CancelledError,):
-            pass
+                try:
+                    if futures or subscriptions:
+                        _LOGGER.debug("recv(%s): %s", self.host, raw_msg)
+                        msg = json.loads(raw_msg.data)
+                        path = msg["path"]
+                        path_futures = self.futures.get(path)
+                        subscription = self._subscriptions.get(path)
+                        if path_futures and msg.get("type") == "response":
+                            for future in path_futures:
+                                if not future.done():
+                                    future.set_result(msg)
+                        if subscription:
+                            queue = subscription_queues.get(path)
+                            if queue is None:
+                                queue = asyncio.Queue()
+                                subscription_queues[path] = queue
+                                old_task = self._subscription_tasks.pop(path, None)
+                                if old_task:
+                                    old_task.cancel()
+                                    await asyncio.gather(
+                                        old_task, return_exceptions=True
+                                    )
+                                self._subscription_tasks[path] = asyncio.create_task(
+                                    self.subscription_handler(queue, subscription)
+                                )
+                            queue.put_nowait(msg)
+                except Exception:
+                    _LOGGER.exception(
+                        "Failed handling StreamMagic websocket message: %s", raw_msg
+                    )
+                    raise
+        except asyncio.CancelledError:
+            raise
+        except Exception:
+            _LOGGER.exception("StreamMagic websocket consumer failed")
+            raise
         finally:
             if self.connection is ws:
                 self.connection = None
+            for task in self._subscription_tasks.values():
+                task.cancel()
+            await asyncio.gather(
+                *self._subscription_tasks.values(), return_exceptions=True
+            )
+            self._subscription_tasks.clear()
+
+            for path_futures in self.futures.values():
+                for future in path_futures:
+                    if not future.done():
+                        future.set_exception(
+                            StreamMagicError(
+                                "StreamMagic consumer stopped before response was received"
+                            )
+                        )
+            self.futures.clear()
 
     async def _send(
         self, path: str, params: Optional[dict[str, str | int | float | bool]] = None
