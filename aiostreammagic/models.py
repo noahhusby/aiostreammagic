@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from enum import StrEnum
-from typing import Optional
 
 from mashumaro import field_options
 from mashumaro.mixins.orjson import DataClassORJSONMixin
@@ -132,7 +131,7 @@ class Source(DataClassORJSONMixin):
     ui_selectable: bool = field(metadata=field_options(alias="ui_selectable"))
     description: str = field(metadata=field_options(alias="description"))
     description_locale: str = field(metadata=field_options(alias="description_locale"))
-    preferred_order: Optional[int] = field(
+    preferred_order: int | None = field(
         metadata=field_options(alias="preferred_order"), default=None
     )
 
@@ -145,17 +144,17 @@ class State(DataClassORJSONMixin):
     power: bool = field(metadata=field_options(alias="power"))
     pre_amp_mode: bool = field(metadata=field_options(alias="pre_amp_mode"))
     pre_amp_state: bool = field(metadata=field_options(alias="pre_amp_state"))
-    volume_step: Optional[int] = field(
+    volume_step: int | None = field(
         metadata=field_options(alias="volume_step"), default=None
     )
-    volume_db: Optional[int] = field(
+    volume_db: int | None = field(
         metadata=field_options(alias="volume_db"), default=None
     )
-    volume_percent: Optional[int] = field(
+    volume_percent: int | None = field(
         metadata=field_options(alias="volume_percent"), default=None
     )
     mute: bool = field(metadata=field_options(alias="mute"), default=False)
-    audio_output: Optional[str] = field(
+    audio_output: str | None = field(
         metadata=field_options(alias="audio_output"), default=None
     )
     control_bus: ControlBusMode = field(
@@ -173,44 +172,30 @@ class State(DataClassORJSONMixin):
 class PlayStateMetadata(DataClassORJSONMixin):
     """Data class representing StreamMagic play state metadata."""
 
-    class_name: Optional[str] = field(
-        metadata=field_options(alias="class"), default=None
-    )
-    source: Optional[str] = field(metadata=field_options(alias="source"), default=None)
-    name: Optional[str] = field(metadata=field_options(alias="name"), default=None)
-    title: Optional[str] = field(metadata=field_options(alias="title"), default=None)
-    art_url: Optional[str] = field(
-        metadata=field_options(alias="art_url"), default=None
-    )
-    sample_format: Optional[str] = field(
+    class_name: str | None = field(metadata=field_options(alias="class"), default=None)
+    source: str | None = field(metadata=field_options(alias="source"), default=None)
+    name: str | None = field(metadata=field_options(alias="name"), default=None)
+    title: str | None = field(metadata=field_options(alias="title"), default=None)
+    art_url: str | None = field(metadata=field_options(alias="art_url"), default=None)
+    sample_format: str | None = field(
         metadata=field_options(alias="sample_format"), default=None
     )
-    mqa: Optional[str] = field(metadata=field_options(alias="mqa"), default=None)
-    signal: Optional[bool] = field(metadata=field_options(alias="signal"), default=None)
-    codec: Optional[str] = field(metadata=field_options(alias="codec"), default=None)
-    lossless: Optional[bool] = field(
+    mqa: str | None = field(metadata=field_options(alias="mqa"), default=None)
+    signal: bool | None = field(metadata=field_options(alias="signal"), default=None)
+    codec: str | None = field(metadata=field_options(alias="codec"), default=None)
+    lossless: bool | None = field(
         metadata=field_options(alias="lossless"), default=None
     )
-    sample_rate: Optional[int] = field(
+    sample_rate: int | None = field(
         metadata=field_options(alias="sample_rate"), default=None
     )
-    bitrate: Optional[int] = field(
-        metadata=field_options(alias="bitrate"), default=None
-    )
-    encoding: Optional[str] = field(
-        metadata=field_options(alias="encoding"), default=None
-    )
-    radio_id: Optional[int] = field(
-        metadata=field_options(alias="radio_id"), default=None
-    )
-    duration: Optional[int] = field(
-        metadata=field_options(alias="duration"), default=None
-    )
-    artist: Optional[str] = field(metadata=field_options(alias="artist"), default=None)
-    station: Optional[str] = field(
-        metadata=field_options(alias="station"), default=None
-    )
-    album: Optional[str] = field(metadata=field_options(alias="album"), default=None)
+    bitrate: int | None = field(metadata=field_options(alias="bitrate"), default=None)
+    encoding: str | None = field(metadata=field_options(alias="encoding"), default=None)
+    radio_id: int | None = field(metadata=field_options(alias="radio_id"), default=None)
+    duration: int | None = field(metadata=field_options(alias="duration"), default=None)
+    artist: str | None = field(metadata=field_options(alias="artist"), default=None)
+    station: str | None = field(metadata=field_options(alias="station"), default=None)
+    album: str | None = field(metadata=field_options(alias="album"), default=None)
 
 
 @dataclass
@@ -224,9 +209,7 @@ class PlayState(DataClassORJSONMixin):
     presettable: bool = field(
         metadata=field_options(alias="presettable"), default=False
     )
-    position: Optional[int] = field(
-        metadata=field_options(alias="position"), default=None
-    )
+    position: int | None = field(metadata=field_options(alias="position"), default=None)
     mode_repeat: str = field(metadata=field_options(alias="mode_repeat"), default="off")
     mode_shuffle: str = field(
         metadata=field_options(alias="mode_shuffle"), default="off"
@@ -258,10 +241,8 @@ class Preset(DataClassORJSONMixin):
     preset_class: str = field(metadata=field_options(alias="class"))
     state: str = field(metadata=field_options(alias="state"))
     is_playing: bool = field(metadata=field_options(alias="is_playing"), default=False)
-    art_url: Optional[str] = field(
-        metadata=field_options(alias="art_url"), default=None
-    )
-    airable_radio_id: Optional[int] = field(
+    art_url: str | None = field(metadata=field_options(alias="art_url"), default=None)
+    airable_radio_id: int | None = field(
         metadata=field_options(alias="airable_radio_id"), default=None
     )
 
@@ -313,12 +294,12 @@ class EQBand(DataClassORJSONMixin):
     """Represents a single EQ band."""
 
     index: int = field(metadata=field_options(alias="index"))
-    filter: Optional[EQFilterType] = field(
+    filter: EQFilterType | None = field(
         metadata=field_options(alias="filter"), default=None
     )
-    freq: Optional[int] = field(metadata=field_options(alias="freq"), default=None)
-    gain: Optional[float] = field(metadata=field_options(alias="gain"), default=None)
-    q: Optional[float] = field(metadata=field_options(alias="q"), default=None)
+    freq: int | None = field(metadata=field_options(alias="freq"), default=None)
+    gain: float | None = field(metadata=field_options(alias="gain"), default=None)
+    q: float | None = field(metadata=field_options(alias="q"), default=None)
 
 
 @dataclass
@@ -343,24 +324,22 @@ class TiltEQ(DataClassORJSONMixin):
 class Audio(DataClassORJSONMixin):
     """Represents audio settings including EQ and balance."""
 
-    digital_filter: Optional[str] = field(
+    digital_filter: str | None = field(
         metadata=field_options(alias="digital_filter"), default=None
     )
-    phase_invert: Optional[bool] = field(
+    phase_invert: bool | None = field(
         metadata=field_options(alias="phase_invert"), default=None
     )
-    volume_limit_percent: Optional[int] = field(
+    volume_limit_percent: int | None = field(
         metadata=field_options(alias="volume_limit_percent"), default=None
     )
-    tilt_eq: Optional[TiltEQ] = field(
+    tilt_eq: TiltEQ | None = field(
         metadata=field_options(alias="tilt_eq"), default=None
     )
-    user_eq: Optional[UserEQ] = field(
+    user_eq: UserEQ | None = field(
         metadata=field_options(alias="user_eq"), default=None
     )
-    balance: Optional[int] = field(
-        metadata=field_options(alias="balance"), default=None
-    )
-    pipeline: Optional[Pipeline] = field(
+    balance: int | None = field(metadata=field_options(alias="balance"), default=None)
+    pipeline: Pipeline | None = field(
         metadata=field_options(alias="pipeline"), default=None
     )

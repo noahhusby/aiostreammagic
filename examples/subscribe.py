@@ -1,8 +1,8 @@
 import asyncio
 import logging
 
-from aiostreammagic.stream_magic import StreamMagicClient
 from aiostreammagic.models import CallbackType
+from aiostreammagic.stream_magic import StreamMagicClient
 
 HOST = "192.168.x.x"  # Replace with your StreamMagic device's IP address
 

@@ -1,7 +1,5 @@
 """Utility functions for StreamMagic."""
 
-from typing import Optional
-
 from aiostreammagic.models import EQBand
 
 
@@ -16,7 +14,7 @@ def eq_bands_to_param_string(bands: list[EQBand]) -> str:
         "index,filter,freq,gain,q|index,filter,freq,gain,q|..."
     """
 
-    def fmt(val: object, float_fmt: Optional[str] = None) -> str:
+    def fmt(val: object, float_fmt: str | None = None) -> str:
         if val is None:
             return ""
         if float_fmt and isinstance(val, float):
