@@ -1,12 +1,12 @@
 """Tests for audio settings: volume limit, balance, equalizer and room correction."""
 
 import pytest
+from conftest import ConnectClient
+from fake_device import FakeStreamMagicDevice, wait_until
 
 from aiostreammagic.exceptions import StreamMagicError
 from aiostreammagic.models import EQBand, EQFilterType
 from aiostreammagic.stream_magic import StreamMagicClient
-from conftest import ConnectClient
-from fake_device import FakeStreamMagicDevice, wait_until
 
 
 def _band(client: StreamMagicClient, index: int) -> EQBand:
@@ -49,8 +49,9 @@ async def test_set_equalizer_mode(client: StreamMagicClient, enabled: bool) -> N
     await client.set_equalizer_mode(enabled)
 
     await wait_until(
-        lambda: client.audio.user_eq is not None
-        and client.audio.user_eq.enabled == enabled
+        lambda: (
+            client.audio.user_eq is not None and client.audio.user_eq.enabled == enabled
+        )
     )
 
 
@@ -150,8 +151,9 @@ async def test_set_room_correction_mode(
     await client.set_room_correction_mode(enabled)
 
     await wait_until(
-        lambda: client.audio.tilt_eq is not None
-        and client.audio.tilt_eq.enabled == enabled
+        lambda: (
+            client.audio.tilt_eq is not None and client.audio.tilt_eq.enabled == enabled
+        )
     )
 
 
@@ -162,8 +164,10 @@ async def test_set_room_correction_intensity(
     await client.set_room_correction_intensity(intensity)
 
     await wait_until(
-        lambda: client.audio.tilt_eq is not None
-        and client.audio.tilt_eq.intensity == intensity
+        lambda: (
+            client.audio.tilt_eq is not None
+            and client.audio.tilt_eq.intensity == intensity
+        )
     )
 
 

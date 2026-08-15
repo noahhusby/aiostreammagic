@@ -1,13 +1,14 @@
 """Shared fixtures backed by the fake device served over a real websocket."""
 
+from collections.abc import AsyncIterator, Callable, Coroutine
 from contextlib import AsyncExitStack
-from typing import Any, AsyncIterator, Callable, Coroutine
+from typing import Any
 
 import pytest
 from aiohttp.test_utils import TestServer
+from fake_device import FakeStreamMagicDevice, create_app
 
 from aiostreammagic import StreamMagicClient
-from fake_device import FakeStreamMagicDevice, create_app
 
 ConnectClient = Callable[
     [FakeStreamMagicDevice], Coroutine[Any, Any, StreamMagicClient]

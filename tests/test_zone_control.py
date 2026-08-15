@@ -1,12 +1,12 @@
 """Tests for zone-level controls: volume, source, power and device settings."""
 
 import pytest
+from fake_device import FakeStreamMagicDevice, wait_until
 
 from aiostreammagic import endpoints as ep
 from aiostreammagic.exceptions import StreamMagicError
 from aiostreammagic.models import ControlBusMode, DisplayBrightness, StandbyMode
 from aiostreammagic.stream_magic import StreamMagicClient
-from fake_device import FakeStreamMagicDevice, wait_until
 
 
 @pytest.mark.parametrize("volume", [0, 25, 50, 100])
