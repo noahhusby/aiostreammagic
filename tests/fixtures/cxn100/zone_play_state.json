@@ -1,0 +1,21 @@
+{
+  "zone": "ZONE1",
+  "data": {
+    "state": "play",
+    "position": 81,
+    "presettable": false,
+    "mode_repeat": "off",
+    "mode_shuffle": "all",
+    "metadata": {
+      "class": "md.track.tidalconnect",
+      "source": "TIDAL",
+      "name": "TIDAL Connect",
+      "duration": 253,
+      "album": "Test Album",
+      "artist": "Test Artist",
+      "title": "Test Track",
+      "art_url": "https://example.invalid/art/track.jpg",
+      "mqa": "none"
+    }
+  }
+}
