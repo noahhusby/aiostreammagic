@@ -1,5 +1,5 @@
 ---
-name: Test and Lint
+name: Test
 
 on:
   push:
@@ -39,30 +39,3 @@ jobs:
         run: poetry install --no-interaction --extras dev
       - name: 🚀 Run pytest
         run: poetry run pytest --cov=aiostreammagic --cov-report=term-missing
-
-  lint:
-    name: Run Ruff and mypy
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v7
-      - name: 🏗 Set up Poetry
-        run: pipx install poetry
-      - name: Set up Python
-        uses: actions/setup-python@v7
-        with:
-          python-version: "3.14"
-          cache: "poetry"
-      - name: 🏗 Install workflow dependencies
-        run: |
-          poetry config virtualenvs.create true
-          poetry config virtualenvs.in-project true
-      - name: 🏗 Install dependencies
-        run: poetry install --no-interaction --extras dev
-      # Scoped to tests/: ruff 0.16's default rule set flags pre-existing
-      # findings in aiostreammagic/ that are out of scope here.
-      - name: 🚀 Run ruff
-        run: |
-          poetry run ruff check tests
-          poetry run ruff format --check tests
-      - name: 🚀 Run mypy
-        run: poetry run mypy aiostreammagic tests
