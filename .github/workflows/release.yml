@@ -20,7 +20,7 @@ jobs:
     - name: 🏗 Set up Poetry
       run: pipx install poetry
     - name: Set up Python ${{ env.DEFAULT_PYTHON }}
-      uses: actions/setup-python@v6
+      uses: actions/setup-python@v7
       with:
         python-version: ${{ env.DEFAULT_PYTHON }}
         cache: "poetry"
