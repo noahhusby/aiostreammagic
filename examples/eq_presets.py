@@ -3,9 +3,9 @@
 import asyncio
 
 from aiostreammagic import (
-    StreamMagicClient,
-    EQBand,
     EQ_PRESETS,
+    EQBand,
+    StreamMagicClient,
 )
 from aiostreammagic.exceptions import StreamMagicError
 
@@ -14,7 +14,7 @@ async def main() -> None:
     """Example of using EQ presets."""
     # List all available presets
     print("Available EQ presets:")
-    for preset_name in EQ_PRESETS.keys():
+    for preset_name in EQ_PRESETS:
         print(f"  - {preset_name}")
 
     # Get preset gain values

@@ -1,6 +1,6 @@
 import asyncio
 
-from aiostreammagic import StreamMagicClient, Source, Info
+from aiostreammagic import Info, Source, StreamMagicClient
 
 HOST = "192.168.x.x"  # Replace with your StreamMagic device's IP address
 

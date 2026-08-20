@@ -53,13 +53,13 @@ HOST = "192.168.20.218"
 async def main():
     """Basic demo entrypoint."""
     async with StreamMagicClient(HOST) as client:
-
         print(f"Model: {client.info.model}")
 
         for source in client.sources:
             print(f"Name: {source.id} ({source.id})")
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     asyncio.run(main())
 ```
 
@@ -83,6 +83,7 @@ async def on_state_change(client: StreamMagicClient):
     print(f"Play State: {client.play_state}")
     print(f"Now Playing: {client.now_playing}")
 
+
 async def main():
     """Subscribe demo entrypoint."""
     client = StreamMagicClient(HOST)
@@ -95,7 +96,7 @@ async def main():
     await client.disconnect()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     asyncio.run(main())
 ```
 

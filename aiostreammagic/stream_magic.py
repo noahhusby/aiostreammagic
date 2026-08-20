@@ -2,35 +2,38 @@
 
 import asyncio
 import json
-from asyncio import AbstractEventLoop, Future, Task, Queue
-from datetime import datetime, UTC
-from typing import Any, Optional, Callable, Awaitable
+from asyncio import AbstractEventLoop, Future, Queue, Task
+from collections.abc import Awaitable, Callable
+from datetime import UTC, datetime
+from types import TracebackType
+from typing import Any, Self
 
-from aiohttp import ClientWebSocketResponse, ClientSession
+from aiohttp import ClientSession, ClientWebSocketResponse
 
 from aiostreammagic.exceptions import StreamMagicError
 from aiostreammagic.models import (
-    Info,
-    Source,
-    State,
-    PlayState,
-    NowPlaying,
-    ShuffleMode,
-    RepeatMode,
-    CallbackType,
+    EQ_PRESETS,
+    Audio,
     AudioOutput,
+    CallbackType,
+    ControlBusMode,
     Display,
     DisplayBrightness,
-    Update,
-    PresetList,
-    ControlBusMode,
-    StandbyMode,
-    Audio,
     EQBand,
     EQFilterType,
-    EQ_PRESETS,
+    Info,
+    NowPlaying,
+    PlayState,
+    PresetList,
+    RepeatMode,
+    ShuffleMode,
+    Source,
+    StandbyMode,
+    State,
+    Update,
 )
 from aiostreammagic.util import eq_bands_to_param_string
+
 from . import endpoints as ep
 from .const import _LOGGER, WS_HEARTBEAT_TIME
 
@@ -46,7 +49,7 @@ class StreamMagicClient:
         should_close_session: bool = True,
     ) -> None:
         self.host = host
-        self.session: Optional[ClientSession] = session
+        self.session: ClientSession | None = session
         self._should_close_session: bool = should_close_session
         self.connection: ClientWebSocketResponse | None = None
         self.futures: dict[str, list[Future[Any]]] = {}
@@ -56,19 +59,19 @@ class StreamMagicClient:
         self.connect_task: Task[Any] | None = None
         self.state_update_callbacks: list[Any] = []
         self._allow_state_update = False
-        self._info: Optional[Info] = None
+        self._info: Info | None = None
         self.sources: list[Source] = []
-        self._state: Optional[State] = None
-        self._play_state: Optional[PlayState] = None
-        self._now_playing: Optional[NowPlaying] = None
+        self._state: State | None = None
+        self._play_state: PlayState | None = None
+        self._now_playing: NowPlaying | None = None
         self._audio: Audio | None = None
-        self._audio_output: Optional[AudioOutput] = None
-        self._display: Optional[Display] = None
-        self._update: Optional[Update] = None
-        self._preset_list: Optional[PresetList] = None
+        self._audio_output: AudioOutput | None = None
+        self._display: Display | None = None
+        self._update: Update | None = None
+        self._preset_list: PresetList | None = None
         self._attempt_reconnection = False
-        self._reconnect_task: Optional[Task[Any]] = None
-        self.position_last_updated: datetime = datetime.now()
+        self._reconnect_task: Task[Any] | None = None
+        self.position_last_updated: datetime = datetime.now(UTC)
         self._subscription_tasks: dict[str, asyncio.Task[Any]] = {}
 
     async def register_state_update_callbacks(self, callback: Any) -> None:
@@ -170,7 +173,7 @@ class StreamMagicClient:
                 await self.connect_task
             except asyncio.CancelledError:
                 raise
-            except Exception:
+            except Exception:  # noqa: BLE001 - supervisor loop, must survive any handler failure
                 _LOGGER.exception("StreamMagic connection handler failed")
 
             await self.do_state_update_callbacks(CallbackType.CONNECTION)
@@ -335,7 +338,7 @@ class StreamMagicClient:
             self.futures.clear()
 
     async def _send(
-        self, path: str, params: Optional[dict[str, str | int | float | bool]] = None
+        self, path: str, params: dict[str, str | int | float | bool] | None = None
     ) -> None:
         """Send a command to the device."""
         message = {
@@ -350,7 +353,7 @@ class StreamMagicClient:
         await self.connection.send_str(json.dumps(message))
 
     async def request(
-        self, path: str, params: Optional[dict[str, str | int | float | bool]] = None
+        self, path: str, params: dict[str, str | int | float | bool] | None = None
     ) -> Any:
         res = self._loop.create_future()
         path_futures = self.futures.get(path, [])
@@ -523,7 +526,7 @@ class StreamMagicClient:
         params = payload["params"]
         if "data" in params:
             self._play_state = PlayState.from_dict(params["data"])
-            self.position_last_updated = datetime.now()
+            self.position_last_updated = datetime.now(UTC)
         await self.do_state_update_callbacks()
 
     async def _async_handle_position(self, payload: dict[str, Any]) -> None:
@@ -849,7 +852,7 @@ class StreamMagicClient:
             ep.POWER, params={"auto_power_down": auto_power_down_time_seconds}
         )
 
-    async def __aenter__(self) -> "StreamMagicClient":
+    async def __aenter__(self) -> Self:
         await self.connect()
         return self
 
@@ -857,6 +860,6 @@ class StreamMagicClient:
         self,
         exc_type: type[BaseException] | None,
         exc: BaseException | None,
-        tb: object | None,
+        tb: TracebackType | None,
     ) -> None:
         await self.disconnect()
