@@ -1,0 +1,43 @@
+{
+  "data": {
+    "name": "CXN100",
+    "timezone": "Europe/Berlin",
+    "locale": "en_GB",
+    "usage_reports": true,
+    "setup": true,
+    "sources_setup": true,
+    "versions": [
+      {
+        "component": "M4",
+        "version": "1.0+gitAUTOINC+6563c7fdd7"
+      },
+      {
+        "component": "cast",
+        "version": "1.68.cast_20240607_1430_RC10.641358537"
+      },
+      {
+        "component": "eMMC",
+        "version": "M62704 (0x000070/0x0100)"
+      },
+      {
+        "component": "application",
+        "version": "1.0+gitAUTOINC+289c462e68"
+      },
+      {
+        "component": "service-pack",
+        "version": "v138-b-009"
+      },
+      {
+        "component": "ui",
+        "version": "45cf935"
+      }
+    ],
+    "udn": "00000000-0000-4000-8000-000000000001",
+    "hcv": 4017,
+    "board_id": "104000",
+    "model": "CXN100",
+    "unit_id": "00000001",
+    "max_http_body_size": 524288,
+    "api": "1.9"
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "zone": "ZONE1",
+  "data": {
+    "source": "IDLE",
+    "power": false,
+    "pre_amp_mode": true,
+    "pre_amp_state": "on",
+    "mute": false,
+    "volume_step": 12,
+    "volume_percent": 40,
+    "volume_db": -38,
+    "cbus": "amplifier"
+  }
+}
