@@ -1,0 +1,40 @@
+{
+  "data": {
+    "start": 1,
+    "end": 99,
+    "max_presets": 99,
+    "presettable": false,
+    "presets": [
+      {
+        "id": 1,
+        "name": "Test Radio One",
+        "type": "Radio",
+        "class": "stream.radio",
+        "state": "OK",
+        "is_playing": false,
+        "art_url": "https://example.invalid/art/radio-one.png",
+        "airable_radio_id": 1000001
+      },
+      {
+        "id": 2,
+        "name": "Test Radio Two",
+        "type": "Radio",
+        "class": "stream.radio",
+        "state": "OK",
+        "is_playing": false,
+        "art_url": "https://example.invalid/art/radio-two.png",
+        "airable_radio_id": 1000002
+      },
+      {
+        "id": 3,
+        "name": "Test Radio Three",
+        "type": "Radio",
+        "class": "stream.radio",
+        "state": "OK",
+        "is_playing": false,
+        "art_url": "https://example.invalid/art/radio-three.png",
+        "airable_radio_id": 1000003
+      }
+    ]
+  }
+}

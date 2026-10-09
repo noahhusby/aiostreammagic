@@ -1,0 +1,30 @@
+{
+  "data": {
+    "name": "851N",
+    "timezone": "Europe/Dublin",
+    "locale": "en_GB",
+    "usage_reports": false,
+    "setup": true,
+    "sources_setup": true,
+    "versions": [
+      {
+        "component": "MCU",
+        "version": "1.10+0.5+8e"
+      },
+      {
+        "component": "service-pack",
+        "version": "v022-a-151+a"
+      },
+      {
+        "component": "application",
+        "version": "1.0+gitAUTOINC+a94a3e2ad8"
+      }
+    ],
+    "udn": "00000000-0000-4000-8000-000000000002",
+    "hcv": 2503,
+    "model": "851N",
+    "unit_id": "00000002",
+    "max_http_body_size": 65536,
+    "api": "1.8"
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "zone": "ZONE1",
+  "data": {
+    "source": "TIDAL",
+    "power": true,
+    "pre_amp_mode": true,
+    "pre_amp_state": "on",
+    "mute": false,
+    "volume_step": 100,
+    "volume_percent": 100,
+    "volume_db": 0,
+    "cbus": "amplifier"
+  }
+}

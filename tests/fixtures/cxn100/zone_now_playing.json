@@ -1,0 +1,37 @@
+{
+  "zone": "ZONE1",
+  "data": {
+    "state": "PLAYING",
+    "source": {
+      "id": "TIDAL",
+      "name": "TIDAL Connect"
+    },
+    "allow_apd": false,
+    "listening_on": "Listening on CXN100 - TIDAL Connect",
+    "display": {
+      "line1": "Test Track",
+      "line2": "Test Artist",
+      "line3": "Test Album",
+      "format": "44.1kHz/16bit FLAC",
+      "mqa": "none",
+      "class": "stream.service.tidal",
+      "art_url": "https://example.invalid/art/track.jpg",
+      "progress": {
+        "position": 123,
+        "duration": 253
+      }
+    },
+    "queue": {
+      "shuffle": "all",
+      "repeat": "off"
+    },
+    "controls": [
+      "pause",
+      "play_pause",
+      "toggle_shuffle",
+      "toggle_repeat",
+      "track_next",
+      "track_previous"
+    ]
+  }
+}
