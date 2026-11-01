@@ -3,10 +3,10 @@
 import asyncio
 import json
 from asyncio import AbstractEventLoop, Future, Queue, Task
-from collections.abc import Awaitable, Callable
+from collections.abc import Awaitable, Callable, Coroutine
 from datetime import UTC, datetime
 from types import TracebackType
-from typing import Any, Self
+from typing import Any, Self, TypeVar
 
 from aiohttp import ClientSession, ClientWebSocketResponse
 
@@ -27,6 +27,7 @@ from aiostreammagic.models import (
     PresetList,
     RepeatMode,
     ShuffleMode,
+    SleepTimer,
     Source,
     StandbyMode,
     State,
@@ -36,6 +37,8 @@ from aiostreammagic.util import eq_bands_to_param_string
 
 from . import endpoints as ep
 from .const import _LOGGER, WS_HEARTBEAT_TIME
+
+_T = TypeVar("_T")
 
 
 class StreamMagicClient:
@@ -73,6 +76,7 @@ class StreamMagicClient:
         self._reconnect_task: Task[Any] | None = None
         self.position_last_updated: datetime = datetime.now(UTC)
         self._subscription_tasks: dict[str, asyncio.Task[Any]] = {}
+        self._sleep_timer: SleepTimer | None = None
 
     async def register_state_update_callbacks(self, callback: Any) -> None:
         """Register state update callback."""
@@ -213,6 +217,7 @@ class StreamMagicClient:
                 self._display,
                 self._update,
                 self._preset_list,
+                self._sleep_timer,
             ) = await asyncio.gather(  # type: ignore[assignment]
                 self.get_info(),
                 self.get_sources(),
@@ -224,6 +229,7 @@ class StreamMagicClient:
                 self.get_display(),
                 self.get_update(),
                 self.get_preset_list(),
+                self._request_optional(self.get_sleep_timer()),
             )
 
             subscribe_state_updates = {
@@ -239,6 +245,10 @@ class StreamMagicClient:
                 self.subscribe(self._async_handle_preset_list, ep.PRESET_LIST),
                 self.subscribe(self._async_handle_audio, ep.AUDIO),
             }
+            if self._sleep_timer is not None:
+                subscribe_state_updates.add(
+                    self.subscribe(self._async_handle_sleep_timer, ep.SLEEP_TIMER)
+                )
 
             subscribe_tasks = set()
             for state_update in subscribe_state_updates:
@@ -378,6 +388,14 @@ class StreamMagicClient:
 
         return response
 
+    async def _request_optional(self, coro: Coroutine[Any, Any, _T]) -> _T | None:
+        """Await a request for an endpoint that older firmware may not implement."""
+        try:
+            return await coro
+        except StreamMagicError as ex:
+            _LOGGER.debug("Optional endpoint unavailable on %s: %s", self.host, ex)
+            return None
+
     async def subscribe(self, callback: Any, path: str) -> Any:
         self._subscriptions[path] = callback
         try:
@@ -449,6 +467,13 @@ class StreamMagicClient:
             raise StreamMagicError("PresetList not available.")
         return self._preset_list
 
+    @property
+    def sleep_timer(self) -> SleepTimer:
+        """Return a type-guaranteed instance of SleepTimer"""
+        if not self._sleep_timer:
+            raise StreamMagicError("SleepTimer not available.")
+        return self._sleep_timer
+
     async def get_info(self) -> Info:
         """Get device information from device."""
         data = await self.request(ep.INFO)
@@ -491,7 +516,7 @@ class StreamMagicClient:
         return Display.from_dict(data["params"]["data"])
 
     async def get_update(self) -> Update:
-        """Get display information from device."""
+        """Get update information from device."""
         data = await self.request(ep.UPDATE)
         return Update.from_dict(data["params"]["data"])
 
@@ -499,6 +524,11 @@ class StreamMagicClient:
         """Get preset list information from device."""
         data = await self.request(ep.PRESET_LIST)
         return PresetList.from_dict(data["params"]["data"])
+
+    async def get_sleep_timer(self) -> SleepTimer:
+        """Get sleep timer information from device."""
+        data = await self.request(ep.SLEEP_TIMER)
+        return SleepTimer.from_dict(data["params"]["data"])
 
     async def _async_handle_info(self, payload: dict[str, Any]) -> None:
         """Handle async info update."""
@@ -577,6 +607,13 @@ class StreamMagicClient:
         params = payload["params"]
         if "data" in params:
             self._preset_list = PresetList.from_dict(params["data"])
+        await self.do_state_update_callbacks()
+
+    async def _async_handle_sleep_timer(self, payload: dict[str, Any]) -> None:
+        """Handle async sleep timer update."""
+        params = payload["params"]
+        if "data" in params:
+            self._sleep_timer = SleepTimer.from_dict(params["data"])
         await self.do_state_update_callbacks()
 
     async def power_on(self) -> None:
@@ -850,6 +887,28 @@ class StreamMagicClient:
         """Set the automatic power down time."""
         await self.request(
             ep.POWER, params={"auto_power_down": auto_power_down_time_seconds}
+        )
+
+    async def set_sleep_timer(self, duration_seconds: int) -> None:
+        """Set the sleep timer for the device."""
+        if self._sleep_timer is None:
+            raise StreamMagicError("Sleep timer is not supported on this device")
+        await self.request(
+            ep.SLEEP_TIMER,
+            params={
+                "duration": duration_seconds,
+                "volume_ramp": 30,
+                "update_interval": 60,
+            },
+        )
+
+    async def cancel_sleep_timer(self) -> None:
+        """Cancel the sleep timer for the device."""
+        if self._sleep_timer is None:
+            raise StreamMagicError("Sleep timer is not supported on this device")
+        await self.request(
+            ep.SLEEP_TIMER,
+            params={"duration": 0, "volume_ramp": 30, "update_interval": 60},
         )
 
     async def __aenter__(self) -> Self:
