@@ -889,6 +889,28 @@ class StreamMagicClient:
             ep.POWER, params={"auto_power_down": auto_power_down_time_seconds}
         )
 
+    async def set_sleep_timer(self, duration_seconds: int) -> None:
+        """Set the sleep timer for the device."""
+        if self._sleep_timer is None:
+            raise StreamMagicError("Sleep timer is not supported on this device")
+        await self.request(
+            ep.SLEEP_TIMER,
+            params={
+                "duration": duration_seconds,
+                "volume_ramp": 30,
+                "update_interval": 60,
+            },
+        )
+
+    async def cancel_sleep_timer(self) -> None:
+        """Cancel the sleep timer for the device."""
+        if self._sleep_timer is None:
+            raise StreamMagicError("Sleep timer is not supported on this device")
+        await self.request(
+            ep.SLEEP_TIMER,
+            params={"duration": 0, "volume_ramp": 30, "update_interval": 60},
+        )
+
     async def __aenter__(self) -> Self:
         await self.connect()
         return self
