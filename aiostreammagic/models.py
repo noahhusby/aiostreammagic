@@ -343,3 +343,20 @@ class Audio(DataClassORJSONMixin):
     pipeline: Pipeline | None = field(
         metadata=field_options(alias="pipeline"), default=None
     )
+
+
+@dataclass
+class SleepTimer(DataClassORJSONMixin):
+    """Represents the sleep timer settings."""
+
+    active: bool = field(metadata=field_options(alias="active"))
+    duration: int | None = field(metadata=field_options(alias="duration"), default=None)
+    remaining: int | None = field(
+        metadata=field_options(alias="remaining"), default=None
+    )
+    volume_ramp: int | None = field(
+        metadata=field_options(alias="volume_ramp"), default=None
+    )
+    update_interval: int | None = field(
+        metadata=field_options(alias="update_interval"), default=None
+    )
