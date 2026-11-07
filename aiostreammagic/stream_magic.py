@@ -6,7 +6,7 @@ from asyncio import AbstractEventLoop, Future, Queue, Task
 from collections.abc import Awaitable, Callable, Coroutine
 from datetime import UTC, datetime
 from types import TracebackType
-from typing import Any, Self, TypeVar
+from typing import Any, Self
 
 from aiohttp import ClientSession, ClientWebSocketResponse
 
@@ -37,8 +37,6 @@ from aiostreammagic.util import eq_bands_to_param_string
 
 from . import endpoints as ep
 from .const import _LOGGER, WS_HEARTBEAT_TIME
-
-_T = TypeVar("_T")
 
 
 class StreamMagicClient:
@@ -388,7 +386,7 @@ class StreamMagicClient:
 
         return response
 
-    async def _request_optional(self, coro: Coroutine[Any, Any, _T]) -> _T | None:
+    async def _request_optional[T](self, coro: Coroutine[Any, Any, T]) -> T | None:
         """Await a request for an endpoint that older firmware may not implement."""
         try:
             return await coro
